@@ -1,0 +1,154 @@
+---
+title: "February 2019: Visualizing my discogs collection"
+author: ''
+date: '2019-03-15'
+slug: visualizing-discogs
+---
+
+
+
+<p>In parts <a href="/post/discog-purrr/">one</a> and <a href="/post/more-discogs">two</a> of this series I did a whole lot of API pulling and data cleaning to get my <a href="https://discogs.com/">discogs</a> collection into a tidy state 🙏 Now I’m finally ready to do something with it!</p>
+<p>I want to be able to explore my collection on a map (😱) and also see what styles of music I like, from where, and how that has changed over time.</p>
+<pre class="r"><code>collection_data</code></pre>
+<pre><code>## # A tibble: 169 x 11
+##    release_id title format artist_id artist_name  year style city  country
+##         &lt;int&gt; &lt;chr&gt; &lt;chr&gt;      &lt;int&gt; &lt;chr&gt;       &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;  
+##  1    7496378 Demo  Tape     4619796 Mollot       2015 Hard… Toro… Canada 
+##  2    4490852 Obse… &quot;12\&quot;&quot;   3192745 Una Bèstia…  2013 Hard… Barc… Spain  
+##  3    5556486 Fuck… &quot;12\&quot;&quot;   2876549 Good Throb   2014 Post… Lond… UK     
+##  4    9827276 I     &quot;7\&quot;&quot;    2769828 S.H.I.T.     2017 Hard… Toro… Canada 
+##  5    9769203 Oído… &quot;12\&quot;&quot;   4282571 Rata Negra   2017 Punk  Madr… Spain  
+##  6    7237138 A Ca… &quot;7\&quot;&quot;    3596548 Ivy          2015 Hard… New … USA    
+##  7   13117042 Tash… &quot;7\&quot;&quot;    5211980 Tashme       2019 Hard… Toro… Canada 
+##  8    7113575 Demo  Tape     4450861 Desgraciad…  2014 Hard… Calg… Canada 
+##  9   10540713 Let … Tape     4273896 Phantom He…  2015 Post… Kans… USA    
+## 10   11260950 Sub … Tape     5694086 Sub Space    2017 Hard… New … USA    
+## # … with 159 more rows, and 2 more variables: lat &lt;dbl&gt;, long &lt;dbl&gt;</code></pre>
+<p>So, yes, I want to map my discogs collection all over the world 🌍</p>
+<p>Pretty much everything I know about spatial data is from Jesse Sadler’s amazing blog post, <a href="https://www.jessesadler.com/post/gis-with-r-intro/">Introduction to GIS with R</a>, so I’m pulling this code heavily from there.</p>
+<p>First, so that we don’t have legend fatigue, I’m going to lump the least common music styles together. My collection is fairly dominated by a few things:</p>
+<pre class="r"><code>collection_data %&gt;%
+  count(style, sort = TRUE)</code></pre>
+<pre><code>## # A tibble: 17 x 2
+##    style                n
+##    &lt;chr&gt;            &lt;int&gt;
+##  1 Hardcore            78
+##  2 Punk                37
+##  3 Post-Punk           14
+##  4 Indie Rock          13
+##  5 Black Metal          4
+##  6 New Wave             4
+##  7 Shoegaze             4
+##  8 Experimental         3
+##  9 Hip Hop              2
+## 10 Indie Pop            2
+## 11 Pop Rock             2
+## 12 Alternative Rock     1
+## 13 Avantgarde           1
+## 14 Grunge               1
+## 15 Ska                  1
+## 16 Stoner Rock          1
+## 17 Synth-pop            1</code></pre>
+<p>and while I’d love to specifically look at New Wave releases across the world, it just doesn’t make sense for that grand total of 4.</p>
+<pre class="r"><code>library(forcats)
+
+collection_data &lt;- collection_data %&gt;%
+  mutate(style = fct_lump(as_factor(style), 4))</code></pre>
+<p>Next, I’m converting my data frame into an <code>sf</code> object using the <code>long</code> and <code>lat</code> fields.</p>
+<pre class="r"><code>library(sf)
+library(dplyr)
+
+points_sf &lt;- collection_data %&gt;%
+  filter(!is.na(lat)) %&gt;%
+  st_as_sf(coords = c(&quot;long&quot;, &quot;lat&quot;), crs = 4326)
+
+points_sf</code></pre>
+<pre><code>## Simple feature collection with 167 features and 9 fields
+## geometry type:  POINT
+## dimension:      XY
+## bbox:           xmin: -123.13 ymin: -33.46 xmax: 139.77 ymax: 63.83
+## epsg (SRID):    4326
+## proj4string:    +proj=longlat +datum=WGS84 +no_defs
+## # A tibble: 167 x 10
+##    release_id title format artist_id artist_name  year style city  country
+##         &lt;int&gt; &lt;chr&gt; &lt;chr&gt;      &lt;int&gt; &lt;chr&gt;       &lt;dbl&gt; &lt;fct&gt; &lt;chr&gt; &lt;chr&gt;  
+##  1    7496378 Demo  Tape     4619796 Mollot       2015 Hard… Toro… Canada 
+##  2    4490852 Obse… &quot;12\&quot;&quot;   3192745 Una Bèstia…  2013 Hard… Barc… Spain  
+##  3    5556486 Fuck… &quot;12\&quot;&quot;   2876549 Good Throb   2014 Post… Lond… UK     
+##  4    9827276 I     &quot;7\&quot;&quot;    2769828 S.H.I.T.     2017 Hard… Toro… Canada 
+##  5    9769203 Oído… &quot;12\&quot;&quot;   4282571 Rata Negra   2017 Punk  Madr… Spain  
+##  6    7237138 A Ca… &quot;7\&quot;&quot;    3596548 Ivy          2015 Hard… New … USA    
+##  7   13117042 Tash… &quot;7\&quot;&quot;    5211980 Tashme       2019 Hard… Toro… Canada 
+##  8    7113575 Demo  Tape     4450861 Desgraciad…  2014 Hard… Calg… Canada 
+##  9   10540713 Let … Tape     4273896 Phantom He…  2015 Post… Kans… USA    
+## 10   11260950 Sub … Tape     5694086 Sub Space    2017 Hard… New … USA    
+## # … with 157 more rows, and 1 more variable: geometry &lt;POINT [°]&gt;</code></pre>
+<p>In order to visualize those, I need a map of the world so I have something to plot on top of (I mean, I guess I don’t <em>need</em> to use the actual earth as a reference point, but I think we’d all appreciate it if I did)</p>
+<pre class="r"><code>library(rnaturalearth)
+
+countries_sf &lt;- ne_countries(scale = &quot;medium&quot;, returnclass = &quot;sf&quot;)</code></pre>
+<p>And then I can plot my collection! I’m using different colours for different music styles, and shapes for different formats.</p>
+<p>To no surprise, the vast majority of my collection is from North America, with a real focus on the Pacific North West (I used to live in Vancouver ☂️) and Toronto/East Coast USA (there’s just a lot of punk there, in general 🎸).</p>
+<pre class="r"><code>library(ggplot2)
+library(paletteer)
+library(plotly)
+
+collection_plot &lt;- ggplot() +
+  geom_sf(data = countries_sf, fill = &quot;white&quot;, size = 0.25, alpha = 0.5) +
+  geom_sf(
+    data = st_jitter(points_sf,
+                     amount = 0.75),
+    aes(color = style, shape = format,
+        text = glue::glue(&#39;&quot;{title}&quot; by {artist_name}&lt;br&gt;{city}, {country}&lt;br&gt;{style} {format}&#39;)),
+    alpha = 0.75,
+    show.legend = FALSE,
+    size = 2
+  ) + 
+  theme_bw() + 
+  theme(legend.position = &quot;none&quot;, 
+        legend.title = element_blank(),
+        axis.text = element_blank(), 
+        axis.ticks = element_blank()) + 
+  scale_color_paletteer_d(&quot;rcartocolor&quot;, &quot;Pastel&quot;)
+
+ggplotly(collection_plot, 
+         tooltip = &quot;text&quot;)</code></pre>
+<pre><code>## Error: stat_sf requires the following missing aesthetics: geometry</code></pre>
+<p>I’m also interested in the different <sub>eras</sub> of my music taste – do I like different kinds of music from different times? You know how to add the time dimension to a plot?</p>
+<p>Animation 😎 🌠</p>
+<p>Similar to spatial data, everything I know about animation is from one source: Thomas Lin Pedersen’s <a href="https://resources.rstudio.com/rstudio-conf-2019/gganimate-live-cookbook">talk</a> about the <a href="https://github.com/thomasp85/gganimate"><code>gganimate</code> package</a> from RStudio conf.</p>
+<p>I’m going to focus on North America, since that’s where most of my information is from. In a maybe blasphemous move, I’m overlaying the American states and Canadian provinces and territories <em>over</em> the map of the world’s countries 😬</p>
+<pre class="r"><code>states_sf &lt;- ne_states(country = c(&quot;Canada&quot;, &quot;United States of America&quot;), returnclass = &quot;sf&quot;)
+
+north_america_collection_plot &lt;- ggplot() +
+  geom_sf(data = countries_sf, fill = &quot;white&quot;, size = 0.25) +
+  geom_sf(data = states_sf, fill = NA, size = 0.25) + 
+  geom_sf(
+    data = st_jitter(points_sf %&gt;% filter(year &gt; 0),
+                     amount = 0.75),
+    aes(color = style, shape = format),
+    alpha = 0.75,
+    show.legend = &quot;point&quot;,
+    size = 3
+  ) +
+  theme_bw() + 
+  theme(legend.title = element_blank(),
+        legend.position = &quot;bottom&quot;) + 
+  guides(colour = guide_legend(override.aes = list(size=5, alpha = 1)),
+         shape = guide_legend(override.aes = list(size=5, alpha = 1))) + 
+  scale_color_paletteer_d(&quot;rcartocolor&quot;, &quot;Pastel&quot;) + 
+  coord_sf(xlim = c(-130, -65), ylim = c(23, 55), datum = NA)</code></pre>
+<p>Without animation, it’s not bad.</p>
+<pre class="r"><code>north_america_collection_plot</code></pre>
+<p><img src="/post/2019-03-15-february-2019-visualizing-my-discogs-collection/index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>With animation it’s <em>way</em> cooler.</p>
+<pre class="r"><code>library(gganimate)
+
+north_america_collection_plot + 
+  transition_states(as.factor(year),
+                    state_length = 3) + 
+  ggtitle(&quot;{closest_state}&quot;) + 
+  shadow_mark() </code></pre>
+<p><img src="/post/2019-03-15-february-2019-visualizing-my-discogs-collection/index_files/figure-html/unnamed-chunk-10-1.gif" width="100%" /></p>
+<p>I lived in the PNW from 2013 to 2017, and you can see a huuuge increase in music from there during that time. Pretty cool!</p>
+<p>I think that’s all I have 💁 Bye!</p>
