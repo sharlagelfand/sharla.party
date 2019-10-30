@@ -15,7 +15,7 @@ blogdown::shortcode("tweet", "1087497501589078016")
 
 Just look at my GitHub commits for the last six months versus the last week:
 
-![](/images/me-me-me-2019/git-commit.png){width=25%}
+![](git-commit.png){width=50%}
 
 This habit means I intend to blog regularly, but when the time comes I can't motivate myself to do it, think of anything to write about, or I am feeling burnt-out-overwhelmed-exhausted-and-uninspired (I think they call this one, uh, `r emo::ji("confounded")`).
 

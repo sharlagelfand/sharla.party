@@ -2,6 +2,7 @@
 title: Tidying and mapping Toronto open data
 author: Sharla Gelfand
 date: '2017-12-27'
+slug: tidying-toronto-open-data
 ---
 
 Unfortunately, the code for this blog post is broken! For archival sake, you can still see the post [here](http://sharlagelfand.netlify.com/posts/tidying-toronto-open-data/) on my old website.

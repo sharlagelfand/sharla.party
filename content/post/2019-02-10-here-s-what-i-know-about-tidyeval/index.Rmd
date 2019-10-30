@@ -19,7 +19,9 @@ i won't use mtcars or iris because i'm bored to death of them. let's use a datas
 ```{r read-data}
 library(dplyr)
 
-delays <- fs::dir_ls(here::here("static", "data", "ttc-delays", "delays")) %>%
+delays <- fs::dir_ls(here::here("content", "post", 
+                                "2019-02-10-here-s-what-i-know-about-tidyeval", 
+                                "delays")) %>%
   purrr::map_dfr(readxl::read_excel) %>%
   janitor::clean_names()
 

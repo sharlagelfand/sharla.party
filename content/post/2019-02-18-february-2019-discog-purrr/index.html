@@ -11,11 +11,9 @@ slug: discog-purrr
 <p>There is a discogs API, and an R package for it, too! The <a href="https://github.com/ewenme/discogger"><code>discogger</code> package</a> is created by <a href="https://twitter.com/ewen_">Ewen lastnameunknown</a> and provides a way to query your discogs collection via R.</p>
 <pre class="r"><code>library(discogger)
 library(dplyr)
-library(conflicted)</code></pre>
-<pre><code>## Warning: `env_bind_fns()` is deprecated as of rlang 0.3.0.
-## Please use `env_bind_active()` instead.
-## This warning is displayed once per session.</code></pre>
-<pre class="r"><code>conflict_prefer(&quot;filter&quot;, &quot;dplyr&quot;)</code></pre>
+library(conflicted)
+
+conflict_prefer(&quot;filter&quot;, &quot;dplyr&quot;)</code></pre>
 <p>I’m querying my collection (you can see it <a href="https://www.discogs.com/user/sharlagelfand/collection">here</a>), and only keeping the <code>content</code> bit.</p>
 <pre class="r"><code>my_collection &lt;- discogs_user_collection(user_name = &quot;sharlagelfand&quot;)[[&quot;content&quot;]]</code></pre>
 <p>The result of the API call is a deeply nested list, starting with a list for each item in my collection (157 listed). Each of those lists then contains the data: <code>instance_id</code>, <code>rating</code>, <code>basic_information</code>, <code>folder_id</code>, <code>date_added</code>, and <code>id</code>.</p>
@@ -80,11 +78,9 @@ library(conflicted)</code></pre>
 ##  $ resource_url: chr &quot;https://api.discogs.com/releases/7496378&quot;
 ##  $ master_id   : int 0</code></pre>
 <p>For me, the first step is to extract the <code>basic_information</code> part only, and transpose it. <code>purrr:transpose()</code> “turns a list-of lists ‘inside-out.’” I want to turn the list inside-out so that it starts to look more like a data frame, with a list of <em>variables</em> rather than a list of <em>records</em> (like, observations – not 💿).</p>
-<pre class="r"><code>library(purrr)</code></pre>
-<pre><code>## Warning: `quo_expr()` is deprecated as of rlang 0.2.0.
-## Please use `quo_squash()` instead.
-## This warning is displayed once per session.</code></pre>
-<pre class="r"><code>basic_information &lt;- my_collection %&gt;%
+<pre class="r"><code>library(purrr)
+
+basic_information &lt;- my_collection %&gt;%
   map(&quot;basic_information&quot;) %&gt;%
   transpose()</code></pre>
 <p>Once we do that, the list looks totally different. Now we have a list that contains the <em>variables</em> from <code>basic_information</code>, and <em>each of those</em> is a list with 157 elements (lists) in them.</p>
@@ -141,7 +137,6 @@ head(basic_information_id_title_unlist)</code></pre>
 ## 4  9769203 Oído Absoluto                     &lt;list [1]&gt; &lt;list [1]&gt;
 ## 5  7237138 A Cat&#39;s Cause, No Dog&#39;s Problem   &lt;list [1]&gt; &lt;list [1]&gt;
 ## 6 13117042 Tashme                            &lt;list [1]&gt; &lt;list [1]&gt;</code></pre>
-<p>(“sorry” about the third item – it’s a <a href="https://goodthrob.bandcamp.com/album/fuck-off">great record!</a>)</p>
 <p>I’ve coloured them in blue now, to indicate they’re no longer lists (not differentiating between integer and character, though).</p>
 <p><img src="unlist_id_title.png" style="width:80.0%" /></p>
 <p>To make <code>artists</code> workable, I’m transposing it, just like we did with the original list.</p>

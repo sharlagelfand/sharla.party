@@ -14,7 +14,9 @@ slug: usethis-for-reporting
 <p>Let’s say I work at the <a href="http://www.ttc.ca/">TTC</a> and have to create a report on the top 10 causes for delays in January 2019.</p>
 <pre class="r"><code>library(readxl)
 
-january_delays &lt;- read_excel(here::here(&quot;content&quot;, &quot;post&quot;, &quot;2019-04-01-usethis-for-reporting&quot;, &quot;Subway_&amp;_SRT_Logs_January_2019.xlsx&quot;))
+january_delays &lt;- read_excel(here::here(&quot;content&quot;, &quot;post&quot;, 
+                                        &quot;2019-04-01-usethis-for-reporting&quot;,
+                                        &quot;Subway_&amp;_SRT_Logs_January_2019.xlsx&quot;))
 
 january_delays</code></pre>
 <pre><code># A tibble: 1,871 x 10
@@ -76,7 +78,9 @@ january_delays %&gt;%
 <pre class="r"><code>january_delays &lt;- january_delays %&gt;%
   filter(line %in% c(&quot;YU&quot;, &quot;BD&quot;, &quot;SHP&quot;, &quot;SRT&quot;))</code></pre>
 <p>Now the data looks good! But, we only have the <em>code</em> of the delay. There is another data set with the actual description.</p>
-<pre class="r"><code>delay_codes &lt;- read_excel(here::here(&quot;content&quot;, &quot;post&quot;, &quot;2019-04-01-usethis-for-reporting&quot;, &quot;Subway &amp; SRT Log Codes.xlsx&quot;)) %&gt;%
+<pre class="r"><code>delay_codes &lt;- read_excel(here::here(&quot;content&quot;, &quot;post&quot;, 
+                                     &quot;2019-04-01-usethis-for-reporting&quot;, 
+                                     &quot;Subway &amp; SRT Log Codes.xlsx&quot;)) %&gt;%
   clean_names()</code></pre>
 <p>It looks a little weird.</p>
 <pre class="r"><code>visdat::vis_dat(delay_codes)</code></pre>
@@ -262,7 +266,7 @@ delay_codes &lt;- delay_codes %&gt;%
 usethis::use_data(delay_codes)</code></pre>
 <p><img src="usethis-use_data.png" /></p>
 <p>Now my package directory looks like this:</p>
-<pre class="comment"><code>├── DESCRIPTION
+<pre comment="NA"><code>├── DESCRIPTION
 ├── LICENSE ** (from the license step)
 ├── LICENSE.md ** (license step)
 ├── R
@@ -305,7 +309,8 @@ delaysreport::delays_data_cleaning(report_month = &quot;January&quot;,
                             report_year = &quot;2019&quot;)
 
 # Step 3: Run the report!
-# Set render to TRUE if you would like the report to render automatically; keep it as FALSE if you want the .Rmd file to open and to render it yourself.
+# Set render to TRUE if you would like the report to render automatically;
+# keep it as FALSE if you want the .Rmd file to open and to render it yourself.
 delaysreport::delays_report(report_month = &quot;January&quot;,
                             report_year = &quot;2019&quot;,
                             render = FALSE)</code></pre>
@@ -352,7 +357,8 @@ delaysreport::data_cleaning(report_month = &quot;{{{ report_month }}}&quot;,
                             report_year = &quot;{{{ report_year }}}&quot;)
 
 # Step 3: Run the report!
-# Set render to TRUE if you would like the report to render automatically; keep it as FALSE if you want the .Rmd file to open and to render it yourself.
+# Set render to TRUE if you would like the report to render automatically; 
+# keep it as FALSE if you want the .Rmd file to open and to render it yourself.
 delaysreport::delays_report(report_month = &quot;{{{ report_month }}}&quot;,
                             report_year = &quot;{{{ report_year }}}&quot;,
                             render = FALSE)</code></pre>
@@ -377,7 +383,8 @@ delaysreport::delays_report(report_month = &quot;{{{ report_month }}}&quot;,
 <p>and when the package is built, the template is available to be used! I can enhance my <code>setup</code> function to actually use it (and add a bit of documentation)</p>
 <pre class="r"><code>#&#39; Set up delays report
 #&#39;
-#&#39; @description Set up delays report, with instructions on how to get the data and helper functions to clean the data and write the report.
+#&#39; @description Set up delays report, with instructions on how to get the data 
+#&#39;   and helper functions to clean the data and write the report.
 #&#39;
 #&#39; @param report_month Month of report
 #&#39; @param report_year Year of report
@@ -434,7 +441,9 @@ library(here)
 library(janitor)
 library(assertr)
 
-delays &lt;- read_excel(here(&quot;reports&quot;, &quot;{{{ report_year }}}&quot;, &quot;{{{ report_month }}}&quot;, &quot;delays_{{{ report_month }}}_{{{ report_year }}}_raw.xlsx&quot;)) %&gt;%
+delays &lt;- read_excel(here(&quot;reports&quot;, &quot;{{{ report_year }}}&quot;, 
+                          &quot;{{{ report_month }}}&quot;, 
+                          &quot;delays_{{{ report_month }}}_{{{ report_year }}}_raw.xlsx&quot;)) %&gt;%
   clean_names()
 
 # Check 1: Check that line is one of YU, BD, SHP, SRT --------------------------

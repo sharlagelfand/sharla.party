@@ -100,8 +100,6 @@ basic_information_id_title_unlist <- basic_information_tibble %>%
 head(basic_information_id_title_unlist)
 ```
 
-("sorry" about the third item -- it's a [great record!](https://goodthrob.bandcamp.com/album/fuck-off))
-
 I've coloured them in blue now, to indicate they're no longer lists (not differentiating between integer and character, though).
 
 ![](unlist_id_title.png){width=80%}
@@ -196,10 +194,6 @@ basic_information_tidy <- basic_information_tidying %>%
     select(release_id = id, title, artists_id, format_description, format_name)
 
 head(basic_information_tidy)
-```
-
-```{r, include=FALSE}
-saveRDS(basic_information_tidy, here::here("content", "posts", "2019-02-18-february-2019-discog-purrr", "basic_information_tidy.rds"))
 ```
 
 ![](collection_tidy.png){width=70%}

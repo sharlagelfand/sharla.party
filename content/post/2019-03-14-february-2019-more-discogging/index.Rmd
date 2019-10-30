@@ -9,7 +9,7 @@ slug: more-discogs
 knitr::opts_chunk$set(echo = TRUE, error = TRUE, message = FALSE, warning = FALSE)
 ```
 
-(Yes, I know it's March. This is a delayed followup for the February edition of my #mememe2019 project. It involves *even more* (and sometimes painful) data cleaning. If you just want to see some actual visualizations, head over to [part three](/posts/visualizing-discogs).)
+(Yes, I know it's March. This is a delayed followup for the February edition of my #mememe2019 project. It involves *even more* (and sometimes painful) data cleaning. If you just want to see some actual visualizations, head over to [part three](/post/visualizing-discogs).)
 
 In one of my [last posts](/post/discog-purrr/), I went through painstaking lengths to understand and tidy the nested lists that the discogs API returns. Now, it's time to actually do something with the data!
 
@@ -27,7 +27,9 @@ Here's what I have so far:
 library(dplyr)
 library(here)
 
-basic_information_tidy <- readRDS(here("content", "post", "2019-03-14-february-2019-more-discogging", "basic_information_tidy.rds"))
+basic_information_tidy <- readRDS(here("content", "post", 
+                                       "2019-03-14-february-2019-more-discogging",
+                                       "basic_information_tidy.rds"))
 
 basic_information_tidy
 ```
@@ -152,7 +154,7 @@ style_priority <- function(style){
 library(tidyr)
 
 release_data <- release_data %>%
-  unnest() %>%
+  unnest(cols = c(styles)) %>%
   mutate(style_priority = style_priority(styles)) %>%
   group_by(release_id) %>%
   filter(style_priority == min(style_priority)) %>%
@@ -182,11 +184,7 @@ Again, I'm creating a *safe* and *insistent* version of the appropriate `discogg
 
 I'm also excluding the id `194` because it's just a placeholder ID used any time an artist on a release is "Various", and doesn't have an artists page -- no point in hitting the API for results I know aren't there!
 
-```{r}
-library(tidyr)
-```
-
-```{r, cache=TRUE}
+```{r, cache = TRUE, eval = FALSE}
 safely_insistently_discogs_artist <- safely(insistently(discogs_artist,
                                                         rate = rate_delay(pause = 60,
                                                                           max_times = 2)),
@@ -204,7 +202,7 @@ artist_data <- basic_information_tidy %>%
 ```
 
 ```{r, include=FALSE}
-saveRDS(artist_data, here("content", "post", "2019-03-14-february-2019-more-discogging", "artist_data.rds"))
+#saveRDS(artist_data, here("content", "post", "2019-03-14-february-2019-more-discogging", "artist_data.rds"))
 artist_data <- readRDS(here("content", "post", "2019-03-14-february-2019-more-discogging", "artist_data.rds"))
 ```
 
@@ -291,7 +289,9 @@ artist_data %>%
 Well, it's because their profile's *don't* follow the format "... band from [location]"! That's ok, I'm not too proud to manually enter data. I'm going to combine the manually entered locations with the ones that I derived (prioritizing the manual ones to fix a few typos).
 
 ```{r}
-manual_locations <- readr::read_csv(here("content", "post", "2019-03-14-february-2019-more-discogging", "manual_locations.csv"))
+manual_locations <- readr::read_csv(here("content", "post",
+                                         "2019-03-14-february-2019-more-discogging",
+                                         "manual_locations.csv"))
 
 artist_data <- artist_data %>%
   left_join(manual_locations, 
@@ -337,7 +337,9 @@ Most of these are dupes because the city exists in multiple countries, but we do
 
 ```{r}
 artist_locations <- artist_locations %>%
-  mutate(country = case_when(city %in% c("Birmingham", "Boston", "Denton", "San Diego", "San Jose", "Washington", "Portland", "Kansas City", "Springfield", "Richmond") ~ "USA",
+  mutate(country = case_when(city %in% c("Birmingham", "Boston", "Denton", "San Diego",
+                                         "San Jose", "Washington", "Portland", 
+                                         "Kansas City", "Springfield", "Richmond") ~ "USA",
                              city == "Dublin" ~ "Ireland",
                              city == "Manchester" ~ "UK",
                              TRUE ~ country)) %>%
@@ -413,10 +415,11 @@ Now I can put together my collection with information about the release and the 
 
 ```{r}
 collection_data <- basic_information_tidy %>%
-  unnest() %>%
+  unnest(cols = c(artists_id)) %>%
   left_join(release_data, by = "release_id") %>%
   left_join(artist_locations, by = c("artists_id" = "artist_id")) %>%
-  select(release_id, title, format, artist_id = artists_id, artist_name, year, style, city, country = country.etc, lat, long)
+  select(release_id, title, format, artist_id = artists_id, artist_name, year, 
+         style, city, country = country.etc, lat, long)
 
 collection_data
 ```
@@ -425,4 +428,4 @@ collection_data
 saveRDS(collection_data, here("content", "post", "2019-03-14-february-2019-more-discogging", "collection_data.rds"))
 ```
 
-In the words of Elle Woods, "we did it!" If you want to see what I actually do with this data, head over to [part three](/posts/visualizing-discogs).
+In the words of Elle Woods, "we did it!" If you want to see what I actually do with this data, head over to [part three](/post/visualizing-discogs).

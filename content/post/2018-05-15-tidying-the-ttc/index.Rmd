@@ -42,7 +42,9 @@ Let's load the data in.
 library(readxl)
 library(knitr)
 
-ttc <- read_excel(here::here("content", "post", "2018-05-15-tidying-the-ttc", "1985-2017 Analysis of ridership.xlsx"))
+ttc <- read_excel(here::here("content", "post", 
+                             "2018-05-15-tidying-the-ttc",
+                             "1985-2017 Analysis of ridership.xlsx"))
 ```
 
 ```{r echo = FALSE}

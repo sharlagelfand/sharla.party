@@ -20,7 +20,9 @@ Let's say I work at the [TTC](http://www.ttc.ca/) and have to create a report on
 ```{r}
 library(readxl)
 
-january_delays <- read_excel(here::here("content", "post", "2019-04-01-usethis-for-reporting", "Subway_&_SRT_Logs_January_2019.xlsx"))
+january_delays <- read_excel(here::here("content", "post", 
+                                        "2019-04-01-usethis-for-reporting",
+                                        "Subway_&_SRT_Logs_January_2019.xlsx"))
 
 january_delays
 ```
@@ -73,7 +75,9 @@ january_delays <- january_delays %>%
 Now the data looks good! But, we only have the *code* of the delay. There is another data set with the actual description.
 
 ```{r}
-delay_codes <- read_excel(here::here("content", "post", "2019-04-01-usethis-for-reporting", "Subway & SRT Log Codes.xlsx")) %>%
+delay_codes <- read_excel(here::here("content", "post", 
+                                     "2019-04-01-usethis-for-reporting", 
+                                     "Subway & SRT Log Codes.xlsx")) %>%
   clean_names()
 ```
 
@@ -331,7 +335,8 @@ delaysreport::delays_data_cleaning(report_month = "January",
                             report_year = "2019")
 
 # Step 3: Run the report!
-# Set render to TRUE if you would like the report to render automatically; keep it as FALSE if you want the .Rmd file to open and to render it yourself.
+# Set render to TRUE if you would like the report to render automatically;
+# keep it as FALSE if you want the .Rmd file to open and to render it yourself.
 delaysreport::delays_report(report_month = "January",
                             report_year = "2019",
                             render = FALSE)
@@ -405,7 +410,8 @@ delaysreport::data_cleaning(report_month = "{{{ report_month }}}",
                             report_year = "{{{ report_year }}}")
 
 # Step 3: Run the report!
-# Set render to TRUE if you would like the report to render automatically; keep it as FALSE if you want the .Rmd file to open and to render it yourself.
+# Set render to TRUE if you would like the report to render automatically; 
+# keep it as FALSE if you want the .Rmd file to open and to render it yourself.
 delaysreport::delays_report(report_month = "{{{ report_month }}}",
                             report_year = "{{{ report_year }}}",
                             render = FALSE)
@@ -438,7 +444,8 @@ and when the package is built, the template is available to be used! I can enhan
 ```{r}
 #' Set up delays report
 #'
-#' @description Set up delays report, with instructions on how to get the data and helper functions to clean the data and write the report.
+#' @description Set up delays report, with instructions on how to get the data 
+#'   and helper functions to clean the data and write the report.
 #'
 #' @param report_month Month of report
 #' @param report_year Year of report
@@ -515,7 +522,9 @@ library(here)
 library(janitor)
 library(assertr)
 
-delays <- read_excel(here("reports", "{{{ report_year }}}", "{{{ report_month }}}", "delays_{{{ report_month }}}_{{{ report_year }}}_raw.xlsx")) %>%
+delays <- read_excel(here("reports", "{{{ report_year }}}", 
+                          "{{{ report_month }}}", 
+                          "delays_{{{ report_month }}}_{{{ report_year }}}_raw.xlsx")) %>%
   clean_names()
 
 # Check 1: Check that line is one of YU, BD, SHP, SRT --------------------------

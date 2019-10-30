@@ -7,7 +7,7 @@ slug: more-discogs
 
 
 
-<p>(Yes, I know it’s March. This is a delayed followup for the February edition of my #mememe2019 project. It involves <em>even more</em> (and sometimes painful) data cleaning. If you just want to see some actual visualizations, head over to <a href="/posts/visualizing-discogs">part three</a>.)</p>
+<p>(Yes, I know it’s March. This is a delayed followup for the February edition of my #mememe2019 project. It involves <em>even more</em> (and sometimes painful) data cleaning. If you just want to see some actual visualizations, head over to <a href="/post/visualizing-discogs">part three</a>.)</p>
 <p>In one of my <a href="/post/discog-purrr/">last posts</a>, I went through painstaking lengths to understand and tidy the nested lists that the discogs API returns. Now, it’s time to actually do something with the data!</p>
 <p>I’m interested in a few things about my music collection, specifically:</p>
 <ul>
@@ -20,7 +20,9 @@ slug: more-discogs
 <pre class="r"><code>library(dplyr)
 library(here)
 
-basic_information_tidy &lt;- readRDS(here(&quot;content&quot;, &quot;post&quot;, &quot;2019-03-14-february-2019-more-discogging&quot;, &quot;basic_information_tidy.rds&quot;))
+basic_information_tidy &lt;- readRDS(here(&quot;content&quot;, &quot;post&quot;, 
+                                       &quot;2019-03-14-february-2019-more-discogging&quot;,
+                                       &quot;basic_information_tidy.rds&quot;))
 
 basic_information_tidy</code></pre>
 <pre><code>## # A tibble: 157 x 5
@@ -178,7 +180,7 @@ release_data %&gt;%
 library(tidyr)
 
 release_data &lt;- release_data %&gt;%
-  unnest() %&gt;%
+  unnest(cols = c(styles)) %&gt;%
   mutate(style_priority = style_priority(styles)) %&gt;%
   group_by(release_id) %&gt;%
   filter(style_priority == min(style_priority)) %&gt;%
@@ -212,7 +214,6 @@ release_data</code></pre>
 <p>Next, I want to know <em>where</em> each release came from (i.e., where the artists are from), so I have to use the API to look up information by artist.</p>
 <p>Again, I’m creating a <em>safe</em> and <em>insistent</em> version of the appropriate <code>discogger</code> function to do so!</p>
 <p>I’m also excluding the id <code>194</code> because it’s just a placeholder ID used any time an artist on a release is “Various”, and doesn’t have an artists page – no point in hitting the API for results I know aren’t there!</p>
-<pre class="r"><code>library(tidyr)</code></pre>
 <pre class="r"><code>safely_insistently_discogs_artist &lt;- safely(insistently(discogs_artist,
                                                         rate = rate_delay(pause = 60,
                                                                           max_times = 2)),
@@ -365,7 +366,9 @@ artist_data</code></pre>
 ## [14] &quot;Chilean twee pop band that started on 2013.&quot;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
 ## [15] &quot;Vancouver, British Columbia\r\nDisbanded in 2015&quot;</code></pre>
 <p>Well, it’s because their profile’s <em>don’t</em> follow the format “… band from [location]”! That’s ok, I’m not too proud to manually enter data. I’m going to combine the manually entered locations with the ones that I derived (prioritizing the manual ones to fix a few typos).</p>
-<pre class="r"><code>manual_locations &lt;- readr::read_csv(here(&quot;content&quot;, &quot;post&quot;, &quot;2019-03-14-february-2019-more-discogging&quot;, &quot;manual_locations.csv&quot;))
+<pre class="r"><code>manual_locations &lt;- readr::read_csv(here(&quot;content&quot;, &quot;post&quot;,
+                                         &quot;2019-03-14-february-2019-more-discogging&quot;,
+                                         &quot;manual_locations.csv&quot;))
 
 artist_data &lt;- artist_data %&gt;%
   left_join(manual_locations, 
@@ -410,7 +413,9 @@ artist_locations %&gt;%
 ## 12 Washington      6</code></pre>
 <p>Most of these are dupes because the city exists in multiple countries, but we don’t have country information on the artist. I’ll put this in manually, then again filter for where <code>country = country.etc</code></p>
 <pre class="r"><code>artist_locations &lt;- artist_locations %&gt;%
-  mutate(country = case_when(city %in% c(&quot;Birmingham&quot;, &quot;Boston&quot;, &quot;Denton&quot;, &quot;San Diego&quot;, &quot;San Jose&quot;, &quot;Washington&quot;, &quot;Portland&quot;, &quot;Kansas City&quot;, &quot;Springfield&quot;, &quot;Richmond&quot;) ~ &quot;USA&quot;,
+  mutate(country = case_when(city %in% c(&quot;Birmingham&quot;, &quot;Boston&quot;, &quot;Denton&quot;, &quot;San Diego&quot;,
+                                         &quot;San Jose&quot;, &quot;Washington&quot;, &quot;Portland&quot;, 
+                                         &quot;Kansas City&quot;, &quot;Springfield&quot;, &quot;Richmond&quot;) ~ &quot;USA&quot;,
                              city == &quot;Dublin&quot; ~ &quot;Ireland&quot;,
                              city == &quot;Manchester&quot; ~ &quot;UK&quot;,
                              TRUE ~ country)) %&gt;%
@@ -418,7 +423,7 @@ artist_locations %&gt;%
   filter((n &gt; 1 &amp; (country == country.etc | is.na(country))) | 
            n == 1) %&gt;%
   select(-n)</code></pre>
-<p>Are we there yet? 😩</p>
+<p>Are we there yet? 😫</p>
 <pre class="r"><code>artist_locations %&gt;%
   get_dupes(artist_id)</code></pre>
 <pre><code>## # A tibble: 15 x 9
@@ -491,10 +496,11 @@ artist_locations %&gt;%
   select(-format_name, -format_description)</code></pre>
 <p>Now I can put together my collection with information about the release and the artist!</p>
 <pre class="r"><code>collection_data &lt;- basic_information_tidy %&gt;%
-  unnest() %&gt;%
+  unnest(cols = c(artists_id)) %&gt;%
   left_join(release_data, by = &quot;release_id&quot;) %&gt;%
   left_join(artist_locations, by = c(&quot;artists_id&quot; = &quot;artist_id&quot;)) %&gt;%
-  select(release_id, title, format, artist_id = artists_id, artist_name, year, style, city, country = country.etc, lat, long)
+  select(release_id, title, format, artist_id = artists_id, artist_name, year, 
+         style, city, country = country.etc, lat, long)
 
 collection_data</code></pre>
 <pre><code>## # A tibble: 169 x 11
@@ -511,4 +517,4 @@ collection_data</code></pre>
 ##  9   10540713 Let … Tape     4273896 Phantom He…  2015 Post… Kans… USA    
 ## 10   11260950 Sub … Tape     5694086 Sub Space    2017 Hard… New … USA    
 ## # … with 159 more rows, and 2 more variables: lat &lt;dbl&gt;, long &lt;dbl&gt;</code></pre>
-<p>In the words of Elle Woods, “we did it!” If you want to see what I actually do with this data, head over to <a href="/posts/visualizing-discogs">part three</a>.</p>
+<p>In the words of Elle Woods, “we did it!” If you want to see what I actually do with this data, head over to <a href="/post/visualizing-discogs">part three</a>.</p>

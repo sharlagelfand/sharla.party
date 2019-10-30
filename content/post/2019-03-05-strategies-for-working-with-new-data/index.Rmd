@@ -9,7 +9,7 @@ slug: new-data-strategies
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 ```
 
-(This post is a basically a blog-replicate of a talk I gave at the R-Ladies Toronto + GTA R User Group kickoff, called ["Opinionated Strategies for Uncharted Territories"](https://sharla.party/talks/rladies-rug-kickoff.html#1) -- if you saw that, this is old news `r emo::ji("nail_care")`)
+(This post is a basically a blog-replicate of a talk I gave at the R-Ladies Toronto + GTA R User Group kickoff, called ["Opinionated Strategies for Uncharted Territories"](https://rladies-rug-kickoff-new-data.netlify.com/) -- if you saw that, this is old news `r emo::ji("nail_care")`)
 
 A few weeks ago the TTC launched a new campaign around *not* going onto the tracks to retrieve dropped items -- "it's not worth your life." Pretty reasonable, right?
 
@@ -21,14 +21,14 @@ Luckily, [Toronto Open Data](https://www.toronto.ca/city-government/data-researc
 
 Let's look at the data.
 
-(A small disclaimer, and my apologies to the TTC and Toronto Open Data -- I messed with this data. Just a bit. Some of the errors are yours, some are mine. You can see the messing around I did [here](https://github.com/sharlagelfand/sharlagelfand.netlify.com/blob/master/content/posts/2019/2019-03-05-new-data-strategies.Rmd#L53)).
+(A small disclaimer, and my apologies to the TTC and Toronto Open Data -- I messed with this data. Just a bit. Some of the errors are yours, some are mine. You can see the messing around I did [here](https://github.com/sharlagelfand/sharla.party/blob/master/content/post/2019-03-05-strategies-for-working-with-new-data/index.Rmd#L53)).
 
 ```{r, include = FALSE}
 set.seed(12345)
 library(dplyr)
 library(ggplot2)
 
-theme_set(theme_minimal() + theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()))
+theme_set(theme_minimal(14) + theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()))
 
 delays_clean <- fs::dir_ls(here::here("content", "post", "2019-03-05-strategies-for-working-with-new-data", "delays")) %>%
   purrr::map_dfr(readxl::read_excel) %>%

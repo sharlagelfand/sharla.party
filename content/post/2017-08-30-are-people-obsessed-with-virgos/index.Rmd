@@ -2,6 +2,7 @@
 title: Are people obsessed with Virgos?
 author: Sharla Gelfand
 date: '2017-08-30'
+slug: virgos
 ---
 
 Unfortunately, the code for this blog post is broken! For archival sake, you can still see the post [here](http://sharlagelfand.netlify.com/posts/virgos/) on my old website.

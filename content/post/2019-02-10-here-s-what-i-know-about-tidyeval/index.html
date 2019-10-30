@@ -12,12 +12,23 @@ slug: tidyeval
 <p>i won’t use mtcars or iris because i’m bored to death of them. let’s use a dataset of toronto subway delays from 2018 (<a href="https://www.toronto.ca/city-government/data-research-maps/open-data/open-data-catalogue/transportation/#917dd033-1fe5-4ba8-04ca-f683eec89761">available from toronto open data</a>)</p>
 <pre class="r"><code>library(dplyr)
 
-delays &lt;- fs::dir_ls(here::here(&quot;static&quot;, &quot;data&quot;, &quot;ttc-delays&quot;, &quot;delays&quot;)) %&gt;%
+delays &lt;- fs::dir_ls(here::here(&quot;content&quot;, &quot;post&quot;, 
+                                &quot;2019-02-10-here-s-what-i-know-about-tidyeval&quot;, 
+                                &quot;delays&quot;)) %&gt;%
   purrr::map_dfr(readxl::read_excel) %&gt;%
-  janitor::clean_names()</code></pre>
-<pre><code>## Error: [ENOENT] Failed to search directory &#39;/Users/sharla/github/sharla.party/static/data/ttc-delays/delays&#39;: no such file or directory</code></pre>
-<pre class="r"><code>head(delays)</code></pre>
-<pre><code>## Error in head(delays): object &#39;delays&#39; not found</code></pre>
+  janitor::clean_names()
+
+head(delays)</code></pre>
+<pre><code>## # A tibble: 6 x 10
+##   date                time  day   station code  min_delay min_gap bound
+##   &lt;dttm&gt;              &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;   &lt;chr&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;
+## 1 2018-04-01 00:00:00 00:27 Sund… ST GEO… MUSAN         8      12 W    
+## 2 2018-04-01 00:00:00 07:56 Sund… FINCH … TUSC          0       0 S    
+## 3 2018-04-01 00:00:00 08:00 Sund… YONGE … MUO           0       0 &lt;NA&gt; 
+## 4 2018-04-01 00:00:00 09:50 Sund… KIPLIN… TUSC          0       0 W    
+## 5 2018-04-01 00:00:00 10:18 Sund… VICTOR… MUSC          0       0 W    
+## 6 2018-04-01 00:00:00 10:22 Sund… KENNED… EUNT          3       7 W    
+## # … with 2 more variables: line &lt;chr&gt;, vehicle &lt;dbl&gt;</code></pre>
 <p>side note, but i can’t believe it’s that easy to read in 12 files and combine them. truly wild.</p>
 <p>tidyeval time.</p>
 <div id="one-variable" class="section level1">
@@ -34,7 +45,16 @@ delays &lt;- fs::dir_ls(here::here(&quot;static&quot;, &quot;data&quot;, &quot;t
 <p>when i use the function, i can just call <code>grouped_mean_delay()</code> and pass it whatever variable i want to group by, without parentheses.</p>
 <pre class="r"><code>delays %&gt;%
   grouped_mean_delay(group_var = day)</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 7 x 2
+##   day       mean_delay
+##   &lt;chr&gt;          &lt;dbl&gt;
+## 1 Friday          2.34
+## 2 Monday          2.46
+## 3 Saturday        2.89
+## 4 Sunday          2.52
+## 5 Thursday        1.99
+## 6 Tuesday         2.26
+## 7 Wednesday       2.04</code></pre>
 <div id="curly-curly-update" class="section level2">
 <h2>curly-curly update</h2>
 <p>this is now <em>even easier</em> (to use and to understand, imo) with the introduction of the <code>{{ }}</code> operator. it does the <code>enquo()</code> and <code>!!</code> in one step, so instead your function looks like this:</p>
@@ -46,7 +66,16 @@ delays &lt;- fs::dir_ls(here::here(&quot;static&quot;, &quot;data&quot;, &quot;t
 <p>and i’d still call the function by passing the variable, without parentheses – nothing changes on the user side, only in the writing and comprehension of the function’s source code.</p>
 <pre class="r"><code>delays %&gt;%
   grouped_mean_delay_curly_curly(group_var = day)</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 7 x 2
+##   day       mean_delay
+##   &lt;chr&gt;          &lt;dbl&gt;
+## 1 Friday          2.34
+## 2 Monday          2.46
+## 3 Saturday        2.89
+## 4 Sunday          2.52
+## 5 Thursday        1.99
+## 6 Tuesday         2.26
+## 7 Wednesday       2.04</code></pre>
 </div>
 </div>
 <div id="two-variables-for-two-purposes" class="section level1">
@@ -68,7 +97,16 @@ delays %&gt;%
     group_var = day,
     mean_var = min_gap
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 7 x 2
+##   day        mean
+##   &lt;chr&gt;     &lt;dbl&gt;
+## 1 Friday     3.46
+## 2 Monday     3.48
+## 3 Saturday   4.34
+## 4 Sunday     3.67
+## 5 Thursday   2.97
+## 6 Tuesday    3.25
+## 7 Wednesday  3.09</code></pre>
 <p>yes there are way to change the name of the output variable (i.e. so it’s not just <code>mean</code>). <a href="https://dplyr.tidyverse.org/articles/programming.html">programming with dplyr</a> talks about this, but i never really do it, so 💁</p>
 <div id="curly-curly-update-1" class="section level2">
 <h2>curly-curly update</h2>
@@ -84,7 +122,16 @@ delays %&gt;%
     group_var = day,
     mean_var = min_gap
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 7 x 2
+##   day        mean
+##   &lt;chr&gt;     &lt;dbl&gt;
+## 1 Friday     3.46
+## 2 Monday     3.48
+## 3 Saturday   4.34
+## 4 Sunday     3.67
+## 5 Thursday   2.97
+## 6 Tuesday    3.25
+## 7 Wednesday  3.09</code></pre>
 </div>
 </div>
 <div id="many-variables-for-the-same-purpose" class="section level1">
@@ -102,7 +149,21 @@ delays %&gt;%
 
 delays %&gt;%
   grouped_mean_delay_2(day, line)</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 63 x 3
+## # Groups:   day [7]
+##    day    line        mean_delay
+##    &lt;chr&gt;  &lt;chr&gt;            &lt;dbl&gt;
+##  1 Friday 16 MCCOWAN        0   
+##  2 Friday 704 RAD BUS       0   
+##  3 Friday BD                2.01
+##  4 Friday SHP               2.04
+##  5 Friday SRT               5.98
+##  6 Friday YU                2.49
+##  7 Friday YU / BD           0   
+##  8 Friday YU/ BD            0   
+##  9 Friday YU/BD             0   
+## 10 Friday YUS               0   
+## # … with 53 more rows</code></pre>
 <p>of course we have the added pleasure of the fact that this dataset isn’t coded consistently (three variants of YU/BD!), but that’s a topic for another post.</p>
 </div>
 <div id="pass-the-vars" class="section level2">
@@ -125,7 +186,21 @@ delays %&gt;%
 
 delays %&gt;%
   grouped_mean_delay_3(group_vars = vars(day, line))</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 63 x 3
+## # Groups:   day [7]
+##    day    line        mean_delay
+##    &lt;chr&gt;  &lt;chr&gt;            &lt;dbl&gt;
+##  1 Friday 16 MCCOWAN        0   
+##  2 Friday 704 RAD BUS       0   
+##  3 Friday BD                2.01
+##  4 Friday SHP               2.04
+##  5 Friday SRT               5.98
+##  6 Friday YU                2.49
+##  7 Friday YU / BD           0   
+##  8 Friday YU/ BD            0   
+##  9 Friday YU/BD             0   
+## 10 Friday YUS               0   
+## # … with 53 more rows</code></pre>
 <p>beauty.</p>
 </div>
 <div id="scoped-verbs-that-take-vars" class="section level3">
@@ -141,7 +216,7 @@ delays %&gt;%
 
 delays %&gt;%
   variable_mean_broken(min_delay, min_gap)</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## Error in check_dot_cols(.vars, .cols): object &#39;min_delay&#39; not found</code></pre>
 <p>but you <em>can</em> just pass the <code>vars()</code>.</p>
 <p>we need to pass in something that <code>summarise_at()</code> expects, specifically something that looks more like a <code>vars()</code> call. because <code>summarise_at()</code> <em>expects</em> something using <code>vars()</code>, we don’t need to do anything to expand the variables out.</p>
 <p>just like above, how because <code>group_by()</code> expects <code>...</code> arguments, we don’t need to do anything to those dots.</p>
@@ -152,7 +227,10 @@ delays %&gt;%
 
 delays %&gt;%
   variable_mean(mean_vars = vars(min_delay, min_gap))</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   min_delay min_gap
+##       &lt;dbl&gt;   &lt;dbl&gt;
+## 1      2.33    3.42</code></pre>
 <p>beauty beauty.</p>
 </div>
 </div>
@@ -173,14 +251,28 @@ delays %&gt;%
     group_vars = vars(line, day),
     mean_vars = vars(min_delay, min_gap)
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 63 x 4
+## # Groups:   line [16]
+##    line        day      min_delay min_gap
+##    &lt;chr&gt;       &lt;chr&gt;        &lt;dbl&gt;   &lt;dbl&gt;
+##  1 16 MCCOWAN  Friday        0       0   
+##  2 16 MCCOWAN  Saturday      0       0   
+##  3 704 RAD BUS Friday        0       0   
+##  4 999         Monday        0       0   
+##  5 999         Thursday      0       0   
+##  6 999         Tuesday       0       0   
+##  7 BD          Friday        2.01    2.91
+##  8 BD          Monday        2.12    3.05
+##  9 BD          Saturday      2.58    3.84
+## 10 BD          Sunday        2.44    3.59
+## # … with 53 more rows</code></pre>
 <p>the only thing here is that you <em>have</em> to use <code>vars()</code>, even if you’re just passing one variable. like, this doesn’t work:</p>
 <pre class="r"><code>delays %&gt;%
   general_grouped_mean(
     group_vars = day,
     mean_vars = vars(min_delay, min_gap)
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## Error in splice(dot_call(capture_dots, frame_env = frame_env, named = named, : object &#39;day&#39; not found</code></pre>
 <p>because the tidyeval method for passing in a single variable to <code>group_by()</code> is <code>enquo()</code> and then <code>!!</code> as described in the first bit,</p>
 <p>and neither does this:</p>
 <pre class="r"><code>delays %&gt;%
@@ -188,7 +280,7 @@ delays %&gt;%
     group_vars = vars(day, line),
     mean_vars = min_delay
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## Error in check_dot_cols(.vars, .cols): object &#39;min_delay&#39; not found</code></pre>
 <p>because <code>summarise_at()</code> requires a <code>vars()</code> call (or one of the other options described in the <code>.vars</code> argument).</p>
 <p>this is still something i’m working out myself. how do i account for the possibility of a <code>vars()</code>, or just a variable on its own? is this what methods are for? s3? i totally know about that. for now, i will be a heavy user of the <code>vars()</code>, even when it’s overkill, a la</p>
 <pre class="r"><code>delays %&gt;%
@@ -196,7 +288,16 @@ delays %&gt;%
     group_vars = vars(day),
     mean_vars = vars(min_delay)
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 7 x 2
+##   day       min_delay
+##   &lt;chr&gt;         &lt;dbl&gt;
+## 1 Friday         2.34
+## 2 Monday         2.46
+## 3 Saturday       2.89
+## 4 Sunday         2.52
+## 5 Thursday       1.99
+## 6 Tuesday        2.26
+## 7 Wednesday      2.04</code></pre>
 </div>
 <div id="passing-functions" class="section level1">
 <h1>passing functions</h1>
@@ -208,7 +309,10 @@ delays %&gt;%
     vars(min_delay, min_gap),
     list(mean, median)
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 1 x 4
+##   min_delay_fn1 min_gap_fn1 min_delay_fn2 min_gap_fn2
+##           &lt;dbl&gt;       &lt;dbl&gt;         &lt;dbl&gt;       &lt;dbl&gt;
+## 1          2.33        3.42             0           0</code></pre>
 <p>so if you’re writing a function, it looks like this:</p>
 <pre class="r"><code>summary_by_var &lt;- function(df, summary_vars, summary_funs) {
   df %&gt;%
@@ -220,14 +324,20 @@ delays %&gt;%
     vars(min_delay, min_gap),
     median
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   min_delay min_gap
+##       &lt;dbl&gt;   &lt;dbl&gt;
+## 1         0       0</code></pre>
 <p>for multiple, you pass in a <em>list</em> of functions generated by <code>list()</code>. i suggest you name them, otherwise your output will be ugly.</p>
 <pre class="r"><code>delays %&gt;%
   summary_by_var(
     vars(min_delay, min_gap),
     list(mean = mean, median = median)
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## # A tibble: 1 x 4
+##   min_delay_mean min_gap_mean min_delay_median min_gap_median
+##            &lt;dbl&gt;        &lt;dbl&gt;            &lt;dbl&gt;          &lt;dbl&gt;
+## 1           2.33         3.42                0              0</code></pre>
 <p>note that a previous version of this blog post advised to use <code>funs()</code> instead of <code>list()</code> – if that’s what you’ve done historically, me too! as of dplyr 0.8.0, <code>funs()</code> is <a href="https://dplyr.tidyverse.org/reference/funs.html">soft deprecated</a> and the use of <code>list()</code> is recommended instead.</p>
 </div>
 <div id="putting-it-all-together" class="section level1">
@@ -248,14 +358,40 @@ delays %&gt;%
       median = median
     )
   )</code></pre>
-<pre><code>## Error in eval(lhs, parent, parent): object &#39;delays&#39; not found</code></pre>
+<pre><code>## Warning: funs() is soft deprecated as of dplyr 0.8.0
+## Please use a list of either functions or lambdas: 
+## 
+##   # Simple named list: 
+##   list(mean = mean, median = median)
+## 
+##   # Auto named with `tibble::lst()`: 
+##   tibble::lst(mean, median)
+## 
+##   # Using lambdas
+##   list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+## This warning is displayed once per session.</code></pre>
+<pre><code>## # A tibble: 63 x 6
+## # Groups:   day [7]
+##    day    line  min_delay_mean min_gap_mean min_delay_median min_gap_median
+##    &lt;chr&gt;  &lt;chr&gt;          &lt;dbl&gt;        &lt;dbl&gt;            &lt;dbl&gt;          &lt;dbl&gt;
+##  1 Friday 16 M…           0            0                   0              0
+##  2 Friday 704 …           0            0                   0              0
+##  3 Friday BD              2.01         2.91                0              0
+##  4 Friday SHP             2.04         3.56                0              0
+##  5 Friday SRT             5.98         9.31                4             10
+##  6 Friday YU              2.49         3.66                0              0
+##  7 Friday YU /…           0            0                   0              0
+##  8 Friday YU/ …           0            0                   0              0
+##  9 Friday YU/BD           0            0                   0              0
+## 10 Friday YUS             0            0                   0              0
+## # … with 53 more rows</code></pre>
 <p>wowwww.</p>
 </div>
 <div id="bye" class="section level1">
 <h1>bye</h1>
 <p>there is a lot i don’t know still, and i am happy to be pointed in the direction of other information, or told if i’m spreading misinformation! i especially would like to know how to be able to pass <code>vars()</code> OR just a single variable without <code>vars()</code>. do i write an <code>if</code> statement and then use <code>enquo()</code> and <code>!!</code>? i don’t know! do you?</p>
 <p><strong>update</strong>: rip <code>enquo()</code> and <code>!!</code> long live curly-curly</p>
-<p>thanks to everyone that talks to me on twitter about tidyeval. there’s a lot out there 🌏</p>
+<p>thanks to everyone that talks to me on twitter about tidyeval. there’s a lot out there 🌍</p>
 <p>here is a collection of tidyeval resources that probably explain why things work the way they do:</p>
 <ul>
 <li><a href="https://dplyr.tidyverse.org/articles/programming.html">programming with dplyr vignette by ?? the tidyverse team</a></li>
