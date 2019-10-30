@@ -1,0 +1,136 @@
+---
+title: opendatatoronto 0.1.0 is on CRAN!
+author: ''
+date: '2019-10-30'
+slug: opendatatoronto-cran
+editor_options:
+  chunk_output_type: console
+draft: true
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "80%")
+```
+
+I'm beyond excited to announce that `opendatatoronto` is now released on CRAN! `opendatatoronto` is a package for searching and accessing data from the [City of Toronto's Open Data portal](https://open.toronto.ca/).
+
+Toronto's Open Data team is all about increasing access to civic data, both by releasing more and more data *and* enabling people to easily retrieve data. They've partnered with folks to make plugins for [google sheets](https://medium.com/@ryan.garnett/towards-data-analytics-open-data-and-the-ckan-google-sheets-add-on-3d9010a2102e#xd_co_f=ZWQ2NzljZDAtOWVjNS00ZWM5LTgyZDctMGUzYmQ0NTRlNWY4~), [QGIS](https://medium.com/@ryan.garnett/towards-location-intelligence-open-data-and-the-qgis-ckan-browser-plugin-72883035009), and I worked with them to create `opendatatoronto`. Happy to say that this team is putting their money where their mouth is and investing `r emo::ji("money_mouth_face")` into open source.
+
+The main goal of the package is to make it *easy* to get data. It can be a pain to find a data set on the portal, manually download it, move it to your analysis folder, figure out what R package to use to read it in (or how to read in multiple files efficiently!), etc. `opendatatoronto` enables you to skip a lot of those steps and read the data directly into R.
+
+There's a [package website](https://sharlagelfand.github.io/opendatatoronto/) with a lot of details, but I'll demonstrate some usage here, too!
+
+## Package usage
+
+First, you can install the package directly from CRAN (!!!):
+
+```r
+install.packages("opendatatoronto")
+```
+
+
+Let's say I'm interested in the [Apartment Buildings Registration](https://open.toronto.ca/dataset/apartment-building-registration/) data set (yes, I'm giving the [TTC](https://sharla.party/posts/usethis-for-reporting/) [data](https://sharla.party/posts/new-data-strategies/) [a](https://sharla.party/posts/tidy-ttc/) [break](https://sharla.party/posts/tidying-toronto-open-data/)).
+
+I can take the URL directly and show information about this data set... which, by the way, is something called a "package". I know `r emo::ji("yum")`. We can see information about the package, including topics it covers, an excerpt of information, how many resources (the actual data sets!) there are (along with their formats), how often it is refreshed, etc.
+
+```{r, message = FALSE}
+library(opendatatoronto)
+library(dplyr)
+
+apartment_building_package <- show_package("https://open.toronto.ca/dataset/apartment-building-registration/")
+
+apartment_building_package %>%
+  glimpse()
+```
+
+To show the resources available in this package, we can take the package ID (or keep using the URL, but to show different usage!) and list the resources:
+
+```{r}
+apartment_building_package_id <- apartment_building_package[["id"]]
+
+apartment_building_package_resources <- list_package_resources(apartment_building_package_id)
+
+apartment_building_package_resources
+```
+
+There's only one resource available, and we can read it directly into R using `get_resource`:
+
+```{r, cache = TRUE}
+apartment_buildings <- apartment_building_package_resources %>%
+  get_resource()
+
+apartment_buildings %>%
+  glimpse()
+```
+
+Let's say I want to see what amenities Toronto apartments have. I know, for instance, that my apartment has a big ol' `NA` for amenities in this data set (and for a lot of the other characteristics `r emo::ji("grimacing")`). 
+
+First, let's split up the `amenities_available` variable, which is in the format "amenity_1 , amenity_2 , ...", i.e., with amenities separated by " , ". I'm also counting the number of buildings and carrying it along for the ride so that I can calculate a percentage later on:
+
+```{r}
+library(janitor)
+library(tidyr)
+
+amenities <- apartment_buildings %>%
+  clean_names() %>%
+  select(id, amenities_available) %>%
+  mutate(n_buildings = n_distinct(id)) %>%
+  separate_rows(amenities_available, sep = " , ")
+
+amenities
+```
+
+Next, I count how many times each amenity appears (i.e., how many buildings have that amenity), replace `NA`s with "None" (for more clarity + no disappearance in plotting down the road), and calculate what percent of buildings have each amenity (or what percent have none `r emo::ji("sweat_smile")`):
+
+```{r}
+amenities <- amenities %>%
+  count(amenities_available, n_buildings) %>%
+  mutate(
+    amenities_available = ifelse(is.na(amenities_available), "None", amenities_available),
+    prop = n / n_buildings
+  )
+
+amenities
+```
+
+And finally, I visualize the results:
+
+```{r}
+library(ggplot2)
+
+amenities %>%
+  ggplot(aes(x = reorder(amenities_available, -prop), y = prop)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "",
+    y = "",
+    title = "Amenities Available in Toronto Apartment Buildings",
+    subtitle = "Percent of rental units with three or more storeys and ten or more units",
+    caption = "Source: Apartment Building Registration (Toronto Open Data)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title.position = "plot"
+  )
+```
+
+Seems I'm not alone having no amenities!
+
+There's a lot of data available in the portal, and I'd encourage you to check it out if you're interested! We don't have [squirrels](https://twitter.com/linpoonsays/status/1184115802183753729), and maybe we'll end up with some raccoons, but there's a lot on there. If you encounter any issues using the package, [please let me know](https://github.com/sharlagelfand/opendatatoronto/issues).
+
+## On creating my first package/sentimental biznass
+
+This is my first "real" R package and I learned a *ton* in the process. I've been talking (complaining?) a lot about things like travis and test coverage over the last few months. I'm not going to give any of these topics a full treatment right now, but here are some resources:
+
+* [usethis workflow for package development](https://www.hvitfeldt.me/blog/usethis-workflow-for-package-development/)
+* [A Beginner's guide to Travis-CI for R](https://juliasilge.com/blog/beginners-guide-to-travis/)
+* [R packages book](https://r-pkgs.org/)
+* [R Package Primer](https://kbroman.org/pkg_primer/)
+
+I will say that packages like `usethis`, `devtools`, and `testthat` will be your best friends in this process. There's been a lot of hard work put into those packages to make creating your own package as smooth and seamless as possible, from inception all the way to [CRAN submission](https://usethis.r-lib.org/reference/use_release_issue.html). I mentioned in my post on the [RStudio Conference Diversity Scholarship](https://sharla.party/posts/rstudio-conf-diversity-scholarships/), but taking part in the Tidy Tools workshop there was also really instrumental in getting me to think about how to write a package, from creating a clear, consistent API to obsessively writing tests.
+
+I'd be remiss not to mention that the heavy lifting in `opendatatoronto` is done by the [`ckanr` package](https://github.com/ropensci/ckanr/), created by Scott Chamberlain. A very cool part of creating `opendatatoronto` was that I could identify things I wanted to change or update in `ckanr` and I was able to do it and contribute back to that package, too! Thanks to Scott for having me play a big part in the [`ckanr` 0.4.0 release](https://github.com/ropensci/ckanr/blob/master/NEWS.md#ckanr-040). Now I'm an author on two CRAN packages `r emo::ji("sob")`
+
+Thanks to everyone who helped me along the way, whether it be through sharing their own package code on GitHub so I could shamelessly borrow (copy) their approaches or by answering questions I asked directly. This is my first go, but it won't be my last `r emo::ji("muscle")`
