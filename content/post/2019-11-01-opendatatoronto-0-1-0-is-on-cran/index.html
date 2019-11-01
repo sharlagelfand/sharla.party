@@ -1,0 +1,210 @@
+---
+title: opendatatoronto 0.1.0 is on CRAN!
+author: Sharla Gelfand
+date: '2019-11-01'
+slug: opendatatoronto-cran
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+<p>I’m beyond excited to announce that <code>opendatatoronto</code> is now released on CRAN! <code>opendatatoronto</code> is a package for searching and accessing data from the <a href="https://open.toronto.ca/">City of Toronto’s Open Data portal</a>.</p>
+<p>Toronto’s Open Data team is all about increasing access to civic data, both by releasing more and more data <em>and</em> enabling people to easily retrieve data. They’ve partnered with folks to make plugins for <a href="https://medium.com/@ryan.garnett/towards-data-analytics-open-data-and-the-ckan-google-sheets-add-on-3d9010a2102e#xd_co_f=ZWQ2NzljZDAtOWVjNS00ZWM5LTgyZDctMGUzYmQ0NTRlNWY4~">google sheets</a>, <a href="https://medium.com/@ryan.garnett/towards-location-intelligence-open-data-and-the-qgis-ckan-browser-plugin-72883035009">QGIS</a>, and I worked with them to create <code>opendatatoronto</code>. Happy to say that this team is putting their money where their mouth is and investing 🤑 into open source.</p>
+<p>The main goal of the package is to make it <em>easy</em> to get data. It can be a pain to find a data set on the portal, manually download it, move it to your analysis folder, figure out what R package to use to read it in (or how to read in multiple files efficiently!), etc. <code>opendatatoronto</code> enables you to skip a lot of those steps and read the data directly into R.</p>
+<p>There’s a <a href="https://sharlagelfand.github.io/opendatatoronto/">package website</a> with a lot of details, but I’ll demonstrate some usage here, too!</p>
+<div id="package-usage" class="section level2">
+<h2>Package usage</h2>
+<p>First, you can install the package directly from CRAN (!!!):</p>
+<pre class="r"><code>install.packages(&quot;opendatatoronto&quot;)</code></pre>
+<p>Let’s say I’m interested in the <a href="https://open.toronto.ca/dataset/apartment-building-registration/">Apartment Buildings Registration</a> data set (yes, I’m giving the <a href="https://sharla.party/posts/usethis-for-reporting/">TTC</a> <a href="https://sharla.party/posts/new-data-strategies/">data</a> <a href="https://sharla.party/posts/tidy-ttc/">a</a> <a href="https://sharla.party/posts/tidying-toronto-open-data/">break</a>).</p>
+<p>I can take the URL directly and show information about this data set… which, by the way, is something called a “package”. I know 😋. We can see information about the package, including topics it covers, an excerpt of information, how many resources (the actual data sets!) there are (along with their formats), how often it is refreshed, etc.</p>
+<pre class="r"><code>library(opendatatoronto)
+library(dplyr)
+
+apartment_building_package &lt;- show_package(&quot;https://open.toronto.ca/dataset/apartment-building-registration/&quot;)
+
+apartment_building_package %&gt;%
+  glimpse()</code></pre>
+<pre><code>## Observations: 1
+## Variables: 10
+## $ title            &lt;chr&gt; &quot;Apartment Building Registration&quot;
+## $ id               &lt;chr&gt; &quot;2b98b3f3-4f3a-42a4-a4e9-b44d3026595a&quot;
+## $ topics           &lt;chr&gt; &quot;Business,City government,Development and infra…
+## $ civic_issues     &lt;chr&gt; NA
+## $ excerpt          &lt;chr&gt; &quot;This dataset contains building information for…
+## $ dataset_category &lt;chr&gt; &quot;Table&quot;
+## $ num_resources    &lt;int&gt; 1
+## $ formats          &lt;chr&gt; &quot;CSV,JSON,XML&quot;
+## $ refresh_rate     &lt;chr&gt; &quot;Monthly&quot;
+## $ last_refreshed   &lt;date&gt; 2019-10-07</code></pre>
+<p>To show the resources available in this package, we can take the package ID (or keep using the URL, but to show different usage!) and list the resources:</p>
+<pre class="r"><code>apartment_building_package_id &lt;- apartment_building_package[[&quot;id&quot;]]
+
+apartment_building_package_resources &lt;- list_package_resources(apartment_building_package_id)
+
+apartment_building_package_resources</code></pre>
+<pre><code>## # A tibble: 1 x 4
+##   name                       id                        format last_modified
+##   &lt;chr&gt;                      &lt;chr&gt;                     &lt;chr&gt;  &lt;date&gt;       
+## 1 Apartment Building Regist… 3ad76a8c-0518-4df2-b94e-… CSV    NA</code></pre>
+<p>There’s only one resource available, and we can read it directly into R using <code>get_resource</code>:</p>
+<pre class="r"><code>apartment_buildings &lt;- apartment_building_package_resources %&gt;%
+  get_resource()
+
+apartment_buildings %&gt;%
+  glimpse()</code></pre>
+<pre><code>## Observations: 3,450
+## Variables: 70
+## $ `_id`                                 &lt;int&gt; 1, 2, 3, 4, 5, 6, 14, 7, 8…
+## $ AIR_CONDITIONING_TYPE                 &lt;chr&gt; &quot;NONE&quot;, &quot;NONE&quot;, &quot;NONE&quot;, &quot;N…
+## $ AMENITIES_AVAILABLE                   &lt;chr&gt; &quot;Indoor recreation room , …
+## $ BALCONIES                             &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ BARRIER_FREE_ACCESSIBILTY_ENTR        &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ BIKE_PARKING                          &lt;chr&gt; &quot;Not Available&quot;, &quot;Not Avai…
+## $ EXTERIOR_FIRE_ESCAPE                  &lt;chr&gt; &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;N…
+## $ `FACILITIES_AVAILABLE?`               &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ FIRE_ALARM                            &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ GARBAGE_CHUTES                        &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ HEATING_TYPE                          &lt;chr&gt; &quot;HOT WATER&quot;, &quot;HOT WATER&quot;, …
+## $ INTERCOM                              &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ `IS_THERE_A_COOLING_ROOM?`            &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ `IS_THERE_EMERGENCY_POWER?`           &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ LAUNDRY_ROOM                          &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ LOCKER_OR_STORAGE_ROOM                &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ NO_BARRIERFREE_ACCESSBLE_UNITS        &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ NO_OF_ACCESSIBLEPARKING_SPACES        &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ NO_OF_ELEVATORS                       &lt;chr&gt; &quot;2&quot;, &quot;2&quot;, &quot;4&quot;, &quot;2&quot;, &quot;0&quot;, &quot;…
+## $ NO_OF_STOREYS                         &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ NO_OF_UNITS                           &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ `NON-SMOKING_BUILDING`                &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ PARKING_TYPE                          &lt;chr&gt; &quot;Underground Garage , Gara…
+## $ PETS_ALLOWED                          &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ PROP_MANAGEMENT_COMPANY_NAME          &lt;chr&gt; NA, NA, &quot;GREENWIN&quot;, &quot;TCH&quot;,…
+## $ PROPERTY_TYPE                         &lt;chr&gt; &quot;TCHC&quot;, &quot;TCHC&quot;, &quot;TCHC&quot;, &quot;T…
+## $ RSN                                   &lt;int&gt; 4155584, 4155588, 4155594,…
+## $ SEPARATE_GAS_METERS_EACH_UNIT         &lt;chr&gt; &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;N…
+## $ SEPARATE_HYDRO_METER_EACH_UNIT        &lt;chr&gt; &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;Y…
+## $ SEPARATE_WATER_METERS_EA_UNIT         &lt;chr&gt; &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;N…
+## $ SITE_ADDRESS                          &lt;chr&gt; &quot;365  BAY MILLS BLVD &quot;, &quot;8…
+## $ SPRINKLER_SYSTEM                      &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ VISITOR_PARKING                       &lt;chr&gt; &quot;BOTH&quot;, &quot;BOTH&quot;, &quot;BOTH&quot;, &quot;P…
+## $ WARD                                  &lt;chr&gt; &quot;22&quot;, &quot;04&quot;, &quot;11&quot;, &quot;12&quot;, &quot;1…
+## $ WINDOW_TYPE                           &lt;chr&gt; &quot;SINGLE PANE&quot;, &quot;DOUBLE PAN…
+## $ YEAR_BUILT                            &lt;chr&gt; &quot;1970&quot;, &quot;1974&quot;, &quot;1968&quot;, &quot;1…
+## $ YEAR_REGISTERED                       &lt;chr&gt; &quot;2017&quot;, &quot;2017&quot;, &quot;2017&quot;, &quot;2…
+## $ HEATING_EQUIPMENT_STATUS              &lt;chr&gt; &quot;ORIGINAL&quot;, &quot;ORIGINAL&quot;, &quot;O…
+## $ DATE_OF_LAST_INSPECTION_BY_TSSA       &lt;chr&gt; &quot;DEC 5, 2016&quot;, &quot;AUG 18, 20…
+## $ NON_SMOKING_BUILDING                  &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ FACILITIES_AVAILABLE                  &lt;chr&gt; &quot;Green Bin / Organics&quot;, &quot;G…
+## $ PCODE                                 &lt;chr&gt; &quot;M1T&quot;, &quot;M6K&quot;, &quot;M5R&quot;, &quot;M4S&quot;…
+## $ SPRINKLER_SYSTEM_TEST_RECORD          &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ IS_THERE_A_COOLING_ROOM               &lt;chr&gt; &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;NO&quot;, &quot;N…
+## $ ELEVATOR_STATUS                       &lt;chr&gt; &quot;ORIGINAL&quot;, &quot;REPLACED&quot;, &quot;R…
+## $ ELEVATOR_PARTS_REPLACED               &lt;chr&gt; NA, NA, NA, &quot;FULL REPLACEM…
+## $ DESCRIPTION_OF_INDOOR_EXERCISE_ROOM   &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ SPRINKLER_SYSTEM_YEAR_INSTALLED       &lt;int&gt; 1970, 1969, 1968, 1977, NA…
+## $ CONFIRMED_UNITS                       &lt;int&gt; 184, 57, 460, 156, 32, 175…
+## $ YEAR_OF_REPLACEMENT                   &lt;chr&gt; NA, &quot;2003&quot;, &quot;2017&quot;, &quot;2009&quot;…
+## $ OUTDOOR_GARBAGE_STORAGE_AREA          &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ NO_OF_LAUNDRY_ROOM_MACHINES           &lt;int&gt; 16, 16, 28, 13, 8, 18, 2, …
+## $ ANNUAL_FIRE_PUMP_FLOW_TEST_RECORDS    &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ IS_THERE_EMERGENCY_POWER              &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ ANNUAL_FIRE_ALARM_TEST_RECORDS        &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ HEATING_EQUIPMENT_YEAR_INSTALLED      &lt;int&gt; 1970, 1974, 1968, 1977, 20…
+## $ APPROVED_FIRE_SAFETY_PLAN             &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ CONFIRMED_STOREYS                     &lt;int&gt; 13, 7, 25, 16, 4, 14, 4, 7…
+## $ LAUNDRY_ROOM_LOCATION                 &lt;chr&gt; &quot;TBD&quot;, &quot;TBD&quot;, &quot;TBD&quot;, &quot;MAIN…
+## $ LAUNDRY_ROOM_HOURS_OF_OPERATION       &lt;chr&gt; &quot;8:00AM TO 8:00PM&quot;, &quot;8:00A…
+## $ EMERG_POWER_SUPPLY_TEST_RECORDS       &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ TSSA_TEST_RECORDS                     &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ DESCRIPTION_OF_OUTDOOR_REC_FACILITIES &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ GREEN_BIN_LOCATION                    &lt;chr&gt; &quot;REAR OF BUILDING&quot;, &quot;REAR …
+## $ PET_RESTRICTIONS                      &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ DESCRIPTION_OF_CHILD_PLAY_AREA        &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA…
+## $ INDOOR_GARBAGE_STORAGE_AREA           &lt;chr&gt; &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;, &quot;YES&quot;…
+## $ RECYCLING_BINS_LOCATION               &lt;chr&gt; &quot;REAR OF BUILDING&quot;, &quot;REAR …
+## $ NO_OF_ACCESSIBLE_PARKING_SPACES       &lt;int&gt; 4, 4, 4, 4, 0, 2, 0, 2, 2,…
+## $ NO_BARRIER_FREE_ACCESSBLE_UNITS       &lt;int&gt; 1, 1, 1, 4, 0, 0, 0, 0, 0,…</code></pre>
+<p>Let’s say I want to see what amenities Toronto apartments have. I know, for instance, that my apartment has a big ol’ <code>NA</code> for amenities in this data set (and for a lot of the other characteristics 😬).</p>
+<p>First, let’s split up the <code>amenities_available</code> variable, which is in the format “amenity_1 , amenity_2 , …”, i.e., with amenities separated by &quot; , &quot;. I’m also counting the number of buildings and carrying it along for the ride so that I can calculate a percentage later on:</p>
+<pre class="r"><code>library(janitor)
+library(tidyr)
+
+amenities &lt;- apartment_buildings %&gt;%
+  clean_names() %&gt;%
+  select(id, amenities_available) %&gt;%
+  mutate(n_buildings = n_distinct(id)) %&gt;%
+  separate_rows(amenities_available, sep = &quot; , &quot;)
+
+amenities</code></pre>
+<pre><code>## # A tibble: 4,202 x 3
+##       id amenities_available    n_buildings
+##    &lt;int&gt; &lt;chr&gt;                        &lt;int&gt;
+##  1     1 Indoor recreation room        3450
+##  2     1 Outdoor rec facilities        3450
+##  3     1 Child play area               3450
+##  4     2 Indoor recreation room        3450
+##  5     3 Indoor recreation room        3450
+##  6     4 &lt;NA&gt;                          3450
+##  7     5 &lt;NA&gt;                          3450
+##  8     6 &lt;NA&gt;                          3450
+##  9    14 &lt;NA&gt;                          3450
+## 10     7 Indoor exercise room          3450
+## # … with 4,192 more rows</code></pre>
+<p>Next, I count how many times each amenity appears (i.e., how many buildings have that amenity), replace <code>NA</code>s with “None” (for more clarity + no disappearance in plotting down the road), and calculate what percent of buildings have each amenity (or what percent have none 😅):</p>
+<pre class="r"><code>amenities &lt;- amenities %&gt;%
+  count(amenities_available, n_buildings) %&gt;%
+  mutate(
+    amenities_available = ifelse(is.na(amenities_available), &quot;None&quot;, amenities_available),
+    prop = n / n_buildings
+  )
+
+amenities</code></pre>
+<pre><code>## # A tibble: 8 x 4
+##   amenities_available    n_buildings     n   prop
+##   &lt;chr&gt;                        &lt;int&gt; &lt;int&gt;  &lt;dbl&gt;
+## 1 Child play area               3450   260 0.0754
+## 2 Indoor exercise room          3450   240 0.0696
+## 3 Indoor pool                   3450   109 0.0316
+## 4 Indoor recreation room        3450   522 0.151 
+## 5 Outdoor pool                  3450   200 0.0580
+## 6 Outdoor rec facilities        3450   230 0.0667
+## 7 Sauna                         3450   126 0.0365
+## 8 None                          3450  2515 0.729</code></pre>
+<p>And finally, I visualize the results:</p>
+<pre class="r"><code>library(ggplot2)
+
+amenities %&gt;%
+  ggplot(aes(x = reorder(amenities_available, -prop), y = prop)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = &quot;&quot;,
+    y = &quot;&quot;,
+    title = &quot;Amenities Available in Toronto Apartment Buildings&quot;,
+    subtitle = &quot;Percent of rental units with three or more storeys and ten or more units&quot;,
+    caption = &quot;Source: Apartment Building Registration (Toronto Open Data)&quot;
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title.position = &quot;plot&quot;
+  )</code></pre>
+<p><img src="/post/2019-11-01-opendatatoronto-0-1-0-is-on-cran/index_files/figure-html/unnamed-chunk-7-1.png" width="80%" /></p>
+<p>Seems I’m not alone having no amenities!</p>
+<p>There’s a lot of data available in the portal, and I’d encourage you to check it out if you’re interested! We don’t have <a href="https://twitter.com/linpoonsays/status/1184115802183753729">squirrels</a>, and maybe we’ll end up with some raccoons, but there’s a lot on there. If you encounter any issues using the package, <a href="https://github.com/sharlagelfand/opendatatoronto/issues">please let me know</a>.</p>
+</div>
+<div id="on-creating-my-first-packagesentimental-biznass" class="section level2">
+<h2>On creating my first package/sentimental biznass</h2>
+<p>This is my first “real” R package and I learned a <em>ton</em> in the process. I’ve been talking (complaining?) a lot about things like travis and test coverage over the last few months. I’m not going to give any of these topics a full treatment right now, but here are some resources:</p>
+<ul>
+<li><a href="https://www.hvitfeldt.me/blog/usethis-workflow-for-package-development/">usethis workflow for package development</a></li>
+<li><a href="https://juliasilge.com/blog/beginners-guide-to-travis/">A Beginner’s guide to Travis-CI for R</a></li>
+<li><a href="https://r-pkgs.org/">R packages book</a></li>
+<li><a href="https://kbroman.org/pkg_primer/">R Package Primer</a></li>
+</ul>
+<p>I will say that packages like <code>usethis</code>, <code>devtools</code>, and <code>testthat</code> will be your best friends in this process. There’s been a lot of hard work put into those packages to make creating your own package as smooth and seamless as possible, from inception all the way to <a href="https://usethis.r-lib.org/reference/use_release_issue.html">CRAN submission</a>. I mentioned in my post on the <a href="https://sharla.party/posts/rstudio-conf-diversity-scholarships/">RStudio Conference Diversity Scholarship</a>, but taking part in the Tidy Tools workshop there was also really instrumental in getting me to think about how to write a package, from creating a clear, consistent API to obsessively writing tests.</p>
+<p>I’d be remiss not to mention that the heavy lifting in <code>opendatatoronto</code> is done by the <a href="https://github.com/ropensci/ckanr/"><code>ckanr</code> package</a>, created by Scott Chamberlain. A very cool part of creating <code>opendatatoronto</code> was that I could identify things I wanted to change or update in <code>ckanr</code> and I was able to do it and contribute back to that package, too! Thanks to Scott for having me play a big part in the <a href="https://github.com/ropensci/ckanr/blob/master/NEWS.md#ckanr-040"><code>ckanr</code> 0.4.0 release</a>. Now I’m an author on two CRAN packages 😭</p>
+<p>Thanks to everyone who helped me along the way, whether it be through sharing their own package code on GitHub so I could shamelessly borrow (copy) their approaches or by answering questions I asked directly. This is my first go, but it won’t be my last 💪</p>
+</div>

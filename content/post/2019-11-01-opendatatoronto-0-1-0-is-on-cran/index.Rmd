@@ -5,7 +5,6 @@ date: '2019-11-01'
 slug: opendatatoronto-cran
 editor_options:
   chunk_output_type: console
-draft: yes
 ---
 
 ```{r, include=FALSE}
