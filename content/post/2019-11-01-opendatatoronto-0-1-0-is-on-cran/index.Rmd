@@ -1,11 +1,11 @@
 ---
 title: opendatatoronto 0.1.0 is on CRAN!
-author: ''
-date: '2019-10-30'
+author: Sharla Gelfand
+date: '2019-11-01'
 slug: opendatatoronto-cran
 editor_options:
   chunk_output_type: console
-draft: true
+draft: yes
 ---
 
 ```{r, include=FALSE}
