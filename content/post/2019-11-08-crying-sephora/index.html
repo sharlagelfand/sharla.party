@@ -1,0 +1,161 @@
+---
+title: crying @ sephora
+author: Sharla Gelfand
+date: '2019-11-08'
+slug: crying-sephora
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+<p>A few days ago an amazing tweet made the rounds:</p>
+{{% tweet "1190790979709755392" %}}
+<p><a href="https://twitter.com/crabbage_/">Connie</a> scraped and shared a data set of 100ish reviews from Sephora that involved the word “crying” - the whole repo is <a href="https://github.com/everestpipkin/datagardens/tree/master/students/khanniie/5_newDataSet">here</a>. This was done for a class called “Data Gardens” taught by <a href="https://twitter.com/everestpipkin">Everest Pipkin</a> at Carnegie Melon. From the <a href="https://everestpipkin.github.io/datagardens/">class sylabus</a>, “Data Gardens is a studio class in creative code and software practices, with an emphasis on data as medium.” It sounds very cool and instead of crying that I never chose a program that involved classes like that, I’m analyzing the crying data 💁</p>
+<p>Let’s read in the data. It contains information on the product rated as well as the actual title + text of the review, the number of stars rated, the date, and a user id.</p>
+<pre class="r"><code>library(jsonlite)
+library(dplyr)
+
+crying &lt;- fromJSON(&quot;https://raw.githubusercontent.com/everestpipkin/datagardens/master/students/khanniie/5_newDataSet/crying_dataset.json&quot;,
+  simplifyDataFrame = TRUE
+)
+
+crying &lt;- as_tibble(crying[[&quot;reviews&quot;]])
+
+crying</code></pre>
+<pre><code>## # A tibble: 105 x 6
+##    date  product_info$br… $name $type $url  review_body review_title stars
+##    &lt;chr&gt; &lt;chr&gt;            &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;       &lt;chr&gt;        &lt;chr&gt;
+##  1 29 M… Too Faced        Bett… Masc… http… Now I can … AWESOME      5 st…
+##  2 29 S… Too Faced        Bett… Masc… http… This holds… if you&#39;re s… 5 st…
+##  3 23 M… Too Faced        Bett… Masc… http… I just bou… Hate it      1 st…
+##  4 15 A… Too Faced        Bett… Masc… http… To start o… Nearly perf… 5 st…
+##  5 21 S… Too Faced        Bett… Masc… http… This masca… Amazing!!    5 st…
+##  6 30 M… Too Faced        Bett… Masc… http… &quot;Let&#39;s tal… Tricky but … 5 st…
+##  7 3 Ap… Too Faced        Bett… Masc… http… I really w… nothing lik… 1 st…
+##  8 6 Ma… Too Faced        Bett… Masc… http… I bought t… absolute be… 5 st…
+##  9 7 Se… Too Faced        Bett… Masc… http… I have ext… Color: Stan… 5 st…
+## 10 27 F… Too Faced        Bett… Masc… http… My 6$ drug… Didn&#39;t like… 1 st…
+## # … with 95 more rows, and 1 more variable: userid &lt;dbl&gt;</code></pre>
+<p>I want to look at the number of stars rated. It looks like this variable actually contains the phrase star/stars:</p>
+<pre class="r"><code>crying %&gt;%
+  count(stars)</code></pre>
+<pre><code>## # A tibble: 5 x 2
+##   stars       n
+##   &lt;chr&gt;   &lt;int&gt;
+## 1 1 star      6
+## 2 2 stars     2
+## 3 3 stars     4
+## 4 4 stars    14
+## 5 5 stars    79</code></pre>
+<p>That’s not that useful for analysis, so I’ll actually pull out just the star rating:</p>
+<pre class="r"><code>library(tidyr)
+
+crying &lt;- crying %&gt;%
+  separate(stars, into = &quot;stars&quot;, convert = TRUE)
+
+crying %&gt;%
+  count(stars)</code></pre>
+<pre><code>## # A tibble: 5 x 2
+##   stars     n
+##   &lt;int&gt; &lt;int&gt;
+## 1     1     6
+## 2     2     2
+## 3     3     4
+## 4     4    14
+## 5     5    79</code></pre>
+<p>We can see that even though these reviews are about crying, the ratings are overwhelmingly good - about 75% 5 star ratings.</p>
+<pre class="r"><code>library(janitor)
+library(ggplot2)
+
+crying %&gt;%
+  tabyl(stars) %&gt;%
+  ggplot(aes(x = stars, y = percent)) +
+  geom_col() +
+  scale_x_continuous(&quot;Star Rating&quot;) + 
+  scale_y_continuous(&quot;Percent of reviews&quot;, labels = scales::percent, limit = c(0, 1)) + 
+  ggtitle(&quot;Sephora crying review star ratings&quot;)</code></pre>
+<p><img src="/post/2019-11-08-crying-sephora/index_files/figure-html/unnamed-chunk-7-1.png" width="80%" /></p>
+<p>There’s no way that I could let all of that juicy review data go without doing some text analysis. I’ve still only read like the first three chapters of the <a href="https://www.tidytextmining.com/">tidy text mining book</a> (sorry 🇨🇦) so we’re just going to count some words.</p>
+<p>I’m pasting the review title + text together, then separating that text out into words (adding a review id along with it so we can keep track of distinct reviews, and carrying the stars along for later!):</p>
+<pre class="r"><code>library(tidytext)
+
+crying_tokens &lt;- crying %&gt;%
+  mutate(review_id = row_number()) %&gt;%
+  mutate(review = paste(review_title, review_body)) %&gt;%
+  select(review_id, stars, review) %&gt;%
+  unnest_tokens(word, review)
+
+crying_tokens</code></pre>
+<pre><code>## # A tibble: 12,150 x 3
+##    review_id stars word   
+##        &lt;int&gt; &lt;int&gt; &lt;chr&gt;  
+##  1         1     5 awesome
+##  2         1     5 now    
+##  3         1     5 i      
+##  4         1     5 can    
+##  5         1     5 cry    
+##  6         1     5 all    
+##  7         1     5 i      
+##  8         1     5 want   
+##  9         1     5 without
+## 10         1     5 having 
+## # … with 12,140 more rows</code></pre>
+<p>Next, I’ll get rid of stop words, and with the remaining words, count how many times they appear:</p>
+<pre class="r"><code>crying_tokens &lt;- crying_tokens %&gt;%
+  anti_join(stop_words, by = &quot;word&quot;)
+
+crying_tokens_frequency &lt;- crying_tokens %&gt;%
+  anti_join(stop_words, by = &quot;word&quot;) %&gt;%
+  count(word, sort = TRUE)
+
+crying_tokens_frequency %&gt;%
+  head(10) %&gt;%
+  ggplot(aes(x = reorder(word, n), y = n)) +
+  geom_col() +
+  labs(x = &quot;&quot;,
+       y = &quot;Number of appearances&quot;,
+       title = &quot;Top 10 used words in Sephora crying reviews&quot;) + 
+  coord_flip()</code></pre>
+<p><img src="/post/2019-11-08-crying-sephora/index_files/figure-html/unnamed-chunk-9-1.png" width="80%" /></p>
+<p>The top words are unsurprising given the context + products chosen!</p>
+<p>I also want to look at the sentiment of each review compared to the star rating. I’m guessing they won’t really match up because this context is… hard to capture. But let’s see. I’m using the NRC sentiment lexicon because it has the most words in common with my data set. The net sentiment is the number of words with positive sentiment minus the number with negative sentiment.</p>
+<pre class="r"><code>crying_sentiment &lt;- crying_tokens %&gt;%
+  inner_join(get_sentiments(&quot;nrc&quot;) %&gt;%
+    filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)), by = &quot;word&quot;) %&gt;%
+  count(review_id, stars, sentiment) %&gt;%
+  spread(sentiment, n, fill = 0) %&gt;%
+  mutate(net_sentiment = positive - negative)
+
+ggplot(
+  crying_sentiment,
+  aes(x = stars, y = net_sentiment)
+) +
+  geom_jitter(width = 0.1, height = 0.1, alpha = 0.5) +
+  labs(
+    x = &quot;Star Rating&quot;,
+    y = &quot;Net Sentiment&quot;
+  )</code></pre>
+<p><img src="/post/2019-11-08-crying-sephora/index_files/figure-html/unnamed-chunk-10-1.png" width="80%" /></p>
+<p>The 5 star reviews are a little all over the place, but it <em>does</em> seem like maybe there’s some sort of trend for the 1-3 star reviews? Is n = 15 statistically significant? Is someone could to revoke my statistics degrees?</p>
+<p>And because I have to…</p>
+<pre class="r"><code>library(ggpubr)
+library(jpeg)
+
+kim &lt;- readJPEG(here::here(&quot;content&quot;, &quot;post&quot;, &quot;2019-11-08-crying-sephora&quot;, &quot;kim.jpg&quot;))
+
+ggplot(
+  crying_sentiment,
+  aes(x = stars, y = net_sentiment)
+) +
+  background_image(kim) +
+  geom_jitter(width = 0.1, height = 0.1, alpha = 0.5, size = 3) +
+  labs(
+    x = &quot;Star Rating&quot;,
+    y = &quot;Net Sentiment&quot;,
+    title = &quot;Star rating versus net sentiment sentiment&quot;,
+    subtitle = &quot;Sephora product reviews involving the word &#39;crying&#39;&quot;,
+    caption = &quot;Data Source: @crabbage_\nAnalysis: @sharlagelfand&quot;
+  )</code></pre>
+<p><img src="/post/2019-11-08-crying-sephora/index_files/figure-html/unnamed-chunk-11-1.png" width="80%" /></p>
+<p>😂 👋</p>

@@ -1,0 +1,161 @@
+---
+title: crying @ sephora
+author: Sharla Gelfand
+date: '2019-11-08'
+slug: crying-sephora
+editor_options:
+  chunk_output_type: console
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "80%", dpi = 300)
+```
+
+A few days ago an amazing tweet made the rounds:
+
+```{r, echo = FALSE}
+blogdown::shortcode("tweet", "1190790979709755392")
+```
+
+[Connie](https://twitter.com/crabbage_/) scraped and shared a data set of 100ish reviews from Sephora that involved the word "crying" - the whole repo is [here](https://github.com/everestpipkin/datagardens/tree/master/students/khanniie/5_newDataSet). This was done for a class called "Data Gardens" taught by [Everest Pipkin](https://twitter.com/everestpipkin) at Carnegie Melon. From the [class sylabus](https://everestpipkin.github.io/datagardens/), "Data Gardens is a studio class in creative code and software practices, with an emphasis on data as medium." It sounds very cool and instead of crying that I never chose a program that involved classes like that, I'm analyzing the crying data `r emo::ji("information_desk_person")`
+
+Let's read in the data. It contains information on the product rated as well as the actual title + text of the review, the number of stars rated, the date, and a user id.
+
+```{r, cache = TRUE}
+library(jsonlite)
+library(dplyr)
+
+crying <- fromJSON("https://raw.githubusercontent.com/everestpipkin/datagardens/master/students/khanniie/5_newDataSet/crying_dataset.json",
+  simplifyDataFrame = TRUE
+)
+
+crying <- as_tibble(crying[["reviews"]])
+
+crying
+```
+
+```{r, include = FALSE}
+library(dplyr)
+ggplot2::theme_set(ggplot2::theme_minimal(14))
+```
+
+I want to look at the number of stars rated. It looks like this variable actually contains the phrase star/stars:
+
+```{r}
+crying %>%
+  count(stars)
+```
+
+That's not that useful for analysis, so I'll actually pull out just the star rating:
+
+```{r}
+library(tidyr)
+
+crying <- crying %>%
+  separate(stars, into = "stars", convert = TRUE)
+
+crying %>%
+  count(stars)
+```
+
+We can see that even though these reviews are about crying, the ratings are overwhelmingly good - about 75% 5 star ratings.
+
+```{r}
+library(janitor)
+library(ggplot2)
+
+crying %>%
+  tabyl(stars) %>%
+  ggplot(aes(x = stars, y = percent)) +
+  geom_col() +
+  scale_x_continuous("Star Rating") + 
+  scale_y_continuous("Percent of reviews", labels = scales::percent, limit = c(0, 1)) + 
+  ggtitle("Sephora crying review star ratings")
+```
+
+There's no way that I could let all of that juicy review data go without doing some text analysis. I've still only read like the first three chapters of the [tidy text mining book](https://www.tidytextmining.com/) (sorry `r emo::ji("canada")`) so we're just going to count some words.
+
+I'm pasting the review title + text together, then separating that text out into words (adding a review id along with it so we can keep track of distinct reviews, and carrying the stars along for later!):
+
+```{r}
+library(tidytext)
+
+crying_tokens <- crying %>%
+  mutate(review_id = row_number()) %>%
+  mutate(review = paste(review_title, review_body)) %>%
+  select(review_id, stars, review) %>%
+  unnest_tokens(word, review)
+
+crying_tokens
+```
+
+Next, I'll get rid of stop words, and with the remaining words, count how many times they appear:
+
+```{r}
+crying_tokens <- crying_tokens %>%
+  anti_join(stop_words, by = "word")
+
+crying_tokens_frequency <- crying_tokens %>%
+  anti_join(stop_words, by = "word") %>%
+  count(word, sort = TRUE)
+
+crying_tokens_frequency %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(word, n), y = n)) +
+  geom_col() +
+  labs(x = "",
+       y = "Number of appearances",
+       title = "Top 10 used words in Sephora crying reviews") + 
+  coord_flip()
+```
+
+The top words are unsurprising given the context + products chosen!
+
+I also want to look at the sentiment of each review compared to the star rating. I'm guessing they won't really match up because this context is... hard to capture. But let's see. I'm using the NRC sentiment lexicon because it has the most words in common with my data set. The net sentiment is the number of words with positive sentiment minus the number with negative sentiment.
+
+```{r}
+crying_sentiment <- crying_tokens %>%
+  inner_join(get_sentiments("nrc") %>%
+    filter(sentiment %in% c("positive", "negative")), by = "word") %>%
+  count(review_id, stars, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(net_sentiment = positive - negative)
+
+ggplot(
+  crying_sentiment,
+  aes(x = stars, y = net_sentiment)
+) +
+  geom_jitter(width = 0.1, height = 0.1, alpha = 0.5) +
+  labs(
+    x = "Star Rating",
+    y = "Net Sentiment"
+  )
+```
+
+The 5 star reviews are a little all over the place, but it *does* seem like maybe there's some sort of trend for the 1-3 star reviews? Is n = 15 statistically significant? Is someone could to revoke my statistics degrees?
+
+And because I have to...
+
+```{r}
+library(ggpubr)
+library(jpeg)
+
+kim <- readJPEG(here::here("content", "post", "2019-11-08-crying-sephora", "kim.jpg"))
+
+ggplot(
+  crying_sentiment,
+  aes(x = stars, y = net_sentiment)
+) +
+  background_image(kim) +
+  geom_jitter(width = 0.1, height = 0.1, alpha = 0.5, size = 3) +
+  labs(
+    x = "Star Rating",
+    y = "Net Sentiment",
+    title = "Star rating versus net sentiment sentiment",
+    subtitle = "Sephora product reviews involving the word 'crying'",
+    caption = "Data Source: @crabbage_\nAnalysis: @sharlagelfand"
+  )
+```
+
+
+`r emo::ji("joy")` `r emo::ji("wave")`
