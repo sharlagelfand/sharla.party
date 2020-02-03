@@ -5,13 +5,22 @@ address:
   country: California
 all_day: true
 authors: []
-date: "2020-01-29"
-date_end: "2020-01-30"
+date: "2020-01-30"
 event: RStudio Conference
 featured: false
-summary: RStudio Conf 2020 - talk to come!
+summary: RStudio Conf 2020
 tags: []
 title: Don’t repeat yourself, talk to yourself! Repeated reporting in the R universe
+
+links:
+- icon: clone
+  icon_pack: fas
+  name: slides
+  url: "https://sharstudioconf.netlify.com/"
+- icon: laptop-code
+  icon_pack: fas
+  name: code
+  url: "https://github.com/sharlagelfand/sharstudioconf"
 ---
 
 ## Abstract

@@ -151,7 +151,7 @@ ggplot(
   labs(
     x = "Star Rating",
     y = "Net Sentiment",
-    title = "Star rating versus net sentiment sentiment",
+    title = "Star rating versus net sentiment",
     subtitle = "Sephora product reviews involving the word 'crying'",
     caption = "Data Source: @crabbage_\nAnalysis: @sharlagelfand"
   )

@@ -1,0 +1,181 @@
+---
+title: data cleaning remixed
+date: '2019-12-19'
+editor_options:
+  chunk_output_type: console
+draft: true
+---
+
+Instead of downloading a file from the website, I'll use my [`opendatatoronto` package]() to read the data directly into R `r emo::ji("nail_care")`
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r data}
+library(opendatatoronto)
+
+ttc_ridership_raw <- search_packages("TTC Ridership Analysis") %>%
+  list_package_resources() %>%
+  get_resource()
+
+ttc_ridership_raw
+```
+
+First, I want to remove all the preamble and change the column names to whatever is in the fourth row, since this contains information on the type of fare paid, as well as the years that the data covers.
+
+I hyped the [`janitor` package]() in my previous post, but now it has even more functionality! The `rows_to_names()` function does exactly what I want:
+
+```{r}
+library(janitor)
+
+ttc_ridership <- ttc_ridership_raw %>%
+  row_to_names(row_number = 4)
+
+ttc_ridership
+```
+
+This also removes the fourth row itself and all the rows prior, which gets rid of the preamble! If you want to use this function but don't like that behaviour, it's controlled in the `remove_row` and `remove_rows_above` arguments (both of which default to `TRUE`).
+
+Next up, I'm going to use `janitor`'s famous `clean_names()` function, because dealing with column names like "FARE MEDIA" and "2015 *" are annoying, but also because the column name `NA` is super illegal in R (source?)
+
+```{r}
+ttc_ridership <- ttc_ridership %>%
+  clean_names()
+
+ttc_ridership
+```
+
+To clean up a little more, I'm going to get rid of any rows where `fare_media` is a total or subtotal (they're nice for looking at the table itself, but not helpful from a tidy data standpoint) or where it's missing (these represent those annoying "post-amble" rows"):
+
+```{r}
+library(dplyr)
+
+ttc_ridership <- ttc_ridership %>%
+  filter(!fare_media %in% c("SYSTEM TOTAL", "SUB-TOTAL"),
+         !is.na(fare_media))
+
+ttc_ridership
+```
+
+I'll also replace all "N/A" values with literal `NA`s, for all columns. `dplyr`'s `mutate_all()` is just like its `mutate()`, except it applies the function to *all* columns.
+
+```{r}
+ttc_ridership <- ttc_ridership %>%
+  mutate_all(~ ifelse(.x == "N/A", NA, .x))
+
+ttc_ridership
+```
+
+I think that's a good start!
+
+In my previous iteration of this post, I did a really, really brute force method of separating out the different sections (WHO/WHERE/WHEN) and subsections (ADULT/SENIOR/CHILD etc) by looking at the row number where each section started/ended and creating different data sets based on that.
+
+I don't want to do that! Talk more here.
+
+```{r}
+library(tidyr)
+
+ttc_ridership <- ttc_ridership %>%
+  fill(na, .direction = "down") %>%
+  rename(section = na)
+```
+
+Since that post, [Luis D. Verde Arregoitia](https://luisdva.github.io/) has created the [`unheadr` package](https://github.com/luisDVA/unheadr/). One of `unheadr`'s goals is to help wrangle data when it has embedded subheaders, exactly the case we have here!
+
+The package's star function `untangle2()` takes embedded subheaders and puts them into their own column, so that you don't have a header (which probably contains important, though separate, information) mixed in with another variable.
+
+In this data set, everything from the row where `na` is "WHO" to the row before where it's "WHERE" is data on *who* paid for transit (adults, seniors/students, or children, each of which is its own subsection that we'll get to), everything from "WHERE" to one before "WHEN" is data on *where* people paid for transit (bus or rail, again with further breakdowns), and everything from "WHEN" to the end is *when* people paid for transit (weekdays or weekends/holidays).
+
+If we want to keep track of which rows contain who/where/when data, we need it in a
+
+`untangle2()` assumes that everything else in the subheader row doesn't contain useful information and we can get rid of it. This works well when looking at the WHO data:
+
+```{r}
+ttc_ridership %>%
+  filter(section == "WHO") %>%
+  filter(fare_media %in% c("ADULT", "SENIOR/STUDENT", "CHILDREN"))
+```
+
+But not when we look at the WHEN dats:
+
+```{r}
+ttc_ridership %>%
+  filter(section == "WHEN")
+```
+
+And it does *kind of* work when we look at the WHERE data, except there are actually *two* rows for BUS, one where it works, one where it doesn't:
+
+```{r}
+ttc_ridership %>%
+  filter(section == "WHERE",
+         fare_media %in% c("BUS", "RAIL"))
+```
+
+so, in order to define the subsections, i'll handle the all of the WHO section, as well as the RAIL subsection of WHERE. I'll deal with the WHEN section and BUS subsection separately.
+
+I'll need to tell `untangle2()` which rows in `fare_media` are subheads with a regular expression (i.e., regex, which I usually try to avoid). The subheaders are "ADULT", "SENIOR/STUDENT", "CHILDREN", and "RAIL", so the regex should match true when it's any of them.
+
+I'm not a regex pro, so this took me a while! I know, at the very least, that `|` in a regex means "or", and that I'll need to escape the `/` in "SENIOR/STUDENT" using `\\` (i.e., `//\`):
+
+```{r}
+library(stringr)
+
+example_subheaders <- c("ADULT", "SENIOR/STUDENT", "CHILDREN", "RAIL")
+regex_attempt <- "ADULT|SENIOR\\/STUDENT|CHILDREN|RAIL"
+
+str_detect(example_subheaders, regex_attempt)
+```
+
+This is good! All of the strings provided match the regex.
+
+But so does this string (one of the fares in the data set):
+
+```{r}
+str_detect("PRESTO - ADULT TWO-HOUR FREE RIDE", regex_attempt)
+```
+
+because, after all, it *does* contain "ADULT"! I want the subheaders to be *exactly* what I specify, not just contain the words.
+
+I need to use [anchors](), which indicate the start (`^`) and end (`$`) of a string. A regex of "^ADULT$" means the string starts, it contains "ADULT", and then it ends.
+
+So this matches:
+
+```{r}
+str_detect("ADULT", "^ADULT$")
+```
+
+but this doesn't:
+
+```{r}
+str_detect("PRESTO - ADULT TWO-HOUR FREE RIDE", "^ADULT$")
+```
+
+which is exactly what we want `r emo::ji("tada")`
+
+Then, the final regex to identify the subheaders is
+
+```{r}
+subheaders_regex <- "^ADULT$|^SENIOR\\/STUDENT$|^CHILDREN$|^RAIL$"
+```
+
+And I'm ready to use `untangle2()`! It's pretty easy to use - you provide the regex, the variable that contains the subheaders (`orig`), and the new column that will contain the values that were in the subheader (`new`):
+
+```{r}
+library(unheadr)
+
+ttc_ridership <- ttc_ridership %>%
+  untangle2(regex = subheaders_regex,
+            orig = fare_media,
+            new = subsection) %>%
+  select(section, subsection, everything())
+
+head(ttc_ridership)
+
+ttc_ridership %>%
+  count(section, subsection)
+```
+
+As I expected, things look right for all of the WHO sections and the WHERE/RAIL subsection, but a little off otherwise -- WHERE/CHILDREN and WHEN/RAIL don't make much sense.
+
+Let's look at the
