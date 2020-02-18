@@ -3,7 +3,8 @@ title: "comparing two data frames: one #rstats, many ways!"
 author: Sharla Gelfand
 date: "2020-02-17"
 slug: comparing-two-dfs
-twitterImg: /img/compare-diffs.png
+image:
+  preview_only: yes
 ---
 
 today i tweeted asking about packages to compare two data frames (specifically, their variable names and types):
