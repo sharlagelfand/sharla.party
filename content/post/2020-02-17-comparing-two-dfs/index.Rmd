@@ -3,6 +3,7 @@ title: "comparing two data frames: one #rstats, many ways!"
 author: Sharla Gelfand
 date: "2020-02-17"
 slug: comparing-two-dfs
+twitterImg: /img/compare-diffs.png
 ---
 
 today i tweeted asking about packages to compare two data frames (specifically, their variable names and types):
@@ -160,7 +161,7 @@ looks like however `dplyr::all_equal()` works, reporting on the missing/extra co
 
 overall, i do like the nice printing, e.g. "cols in y but not in x", and these could probably be str_replace-ified in a function to supply the actual data frame names (e.g. iris vs iris_wrong_class).
 
-i'm running the version of dplyr on CRAN - i had a dev version installed earlier and some of the messages [looked different](https://github.com/tidyverse/dplyr/blob/master/R/all-equal.r#L74). if these will be changing (that's ok!) i wouldn't want to rely on altering the string output for creating my own errors, since the strings could chang, and i don't necessarily want to require dplyr 1.0.0 in a package just for all_equal strings :~)
+i'm running the version of dplyr on CRAN - i had a dev version installed earlier and some of the messages [looked different](https://github.com/tidyverse/dplyr/blob/master/R/all-equal.r#L74). if these will be changing (that's ok!) i wouldn't want to rely on altering the string output for creating my own errors, since the strings could change, and i don't necessarily want to require dplyr 1.0.0 in a package just for all_equal strings :~)
 
 ## `janitor::compare_df_cols()`
 
@@ -201,7 +202,7 @@ compare_df_cols(iris, iris_missing_extra_cols)
 
 i like this because it shows all columns in both, and what their types are, by data frame (NA if the column isn't in that df)
 
-strangly enough, a "mismatch" here is a mismatch in class, and NA does not count as a mismatch:
+strangely enough, a "mismatch" here is a mismatch in class, and NA does not count as a mismatch:
 
 ```{r}
 compare_df_cols(iris, iris_missing_extra_cols, return = "mismatch")
@@ -219,7 +220,7 @@ what about if the variable classes don't match?
 compare_df_cols(iris, iris_wrong_class, return = "mismatch")
 ```
 
-i like this because you can easily construst your own message from this structure, using glue:
+i like this because you can easily construct your own message from this structure, using glue:
 
 ```{r, message = FALSE}
 library(glue)
@@ -301,7 +302,7 @@ x <- expect_equal(iris, iris)
 x
 ```
 
-but doesn't print it automatially, probably since it's usually used within a `test_that()` call.
+but doesn't print it automatically, probably since it's usually used within a `test_that()` call.
 
 when there are missing/extra columns:
 
@@ -347,7 +348,7 @@ diffdf(iris, iris_wrong_class)
 
 i don't know what a mode is (something related to factors, i guess!) but i like that it reports the different classes in Species.
 
-this function also returns a list of data frames with issues invisibly (i surpressed warnings because it was yelling ok)
+this function also returns a list of data frames with issues invisibly (i suppressed warnings because it was yelling ok)
 
 ```{r}
 x <- diffdf(iris, iris_missing_extra_cols_wrong_class, suppress_warnings = TRUE)
@@ -478,7 +479,7 @@ some people suggested packages for comparing the actual *values* within a data f
 
 if you want to do that:
 
-`visdat` in general is such an awesome package for visually understanding your data. [Nick Tierney](https://twitter.com/nj_tierney/status/1229531977100840961) is its creator (and suggestor!), specifically suggesting [visdat::vis_compare()](https://visdat.njtierney.com/#using-vis_compare) for visually comparing values.
+`visdat` in general is such an awesome package for visually understanding your data. [Nick Tierney](https://twitter.com/nj_tierney/status/1229531977100840961) is its creator (and suggester!), specifically suggesting [visdat::vis_compare()](https://visdat.njtierney.com/#using-vis_compare) for visually comparing values.
 
 [dataCompareR::rCompare()](https://cran.r-project.org/web/packages/dataCompareR/vignettes/dataCompareR.html) can be used for comparing values very robustly. thank you to [Robert Campbell](https://twitter.com/robertc_93/status/1229544225060118528) for the suggestion!
 
