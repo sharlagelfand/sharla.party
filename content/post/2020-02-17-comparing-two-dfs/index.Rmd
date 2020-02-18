@@ -1,0 +1,497 @@
+---
+title: "comparing two data frames: one #rstats, many ways!"
+author: Sharla Gelfand
+date: "2020-02-17"
+slug: comparing-two-dfs
+---
+
+today i tweeted asking about packages to compare two data frames (specifically, their variable names and types):
+
+```{r echo=FALSE}
+blogdown::shortcode("tweet", "1229512910591885317")
+```
+
+judging by the ratio (18 replies to 38 likes!) at the time of writing, *yes* there are definitely packages to do this! in this post, i want to explore the (many) different and excellent methods for comparing two data frames in #rstats.
+
+# the data
+
+first, what are we talking about? imagine i have some data coming in, and i know what it should look like. it should look like `iris`! `r emo::ji("flower")`
+
+```{r, include = FALSE}
+iris <- tibble::as_tibble(iris)
+options(tibble.print_max = 5, tibble.print_min = 5)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+iris
+```
+
+so, `iris` has 5 columns: Sepal.Length, Sepal.Width, Petal.Length, and Species. the column types are: numeric/double (times 4!) and factor.
+
+the data i'm bringing in could have a number of problems.
+
+it could be missing a column:
+
+```{r, message = FALSE}
+library(dplyr)
+
+iris_missing_cols <- iris %>%
+  select(-Sepal.Length)
+
+iris_missing_cols
+```
+
+it could have an extra column:
+
+```{r}
+iris_extra_cols <- iris %>%
+  mutate(Specieso = Species)
+
+iris_extra_cols
+```
+
+it could be missing a column *and* have an extra column:
+
+```{r}
+iris_missing_extra_cols <- iris %>%
+  select(-Sepal.Length) %>%
+  mutate(Specieso = Species)
+
+iris_missing_extra_cols
+```
+
+it could have a column of the wrong class:
+
+```{r}
+iris_wrong_class <- iris %>%
+  mutate(Species = as.character(Species))
+
+iris_wrong_class
+```
+
+or it could have all three!
+
+```{r}
+iris_missing_extra_cols_wrong_class <- iris_missing_extra_cols %>%
+  mutate(Species = as.character(Species))
+
+iris_missing_extra_cols_wrong_class
+```
+
+one last thing is not a problem, but i'm curious to see if the packages i explore will think it is. this is when the column *order* is different:
+
+```{r}
+iris_diff_order <- iris %>%
+  select(Species, everything())
+
+iris_diff_order
+```
+
+# what i dream of `r emo::ji("cloud")`
+
+in the tweet i mentioned i'm looking for packages that will provide me with nice, descriptive errors (or robust data to create my own) describing what's different between the data sets.
+
+what does this look like? two main things.
+
+1. saying what columns are missing (and what's optionally, what's extra).
+
+    for `iris` vs `iris_missing_cols`, i want to know that `iris_missing_cols` is missing a column called Sepal.Length. 
+    
+    for `iris` vs `iris_extra_cols`, i want to know that `iris_extra_cols` has an extra column called Specieso.
+    
+    for `iris` vs `iris_missing_extra_cols`, i want to know that `iris_missing_extra_cols` is missing Sepal.Length and has an extra column Specieso.
+    
+2. saying what classes are different.
+
+    for `iris` vs `iris_wrong_class`, i want to know that Species *should be* a factor, but it's a character.
+
+ok, putting them together, three things.
+
+3. saying what columns are missing, what's extra, and what classes are different.
+
+    for `iris` vs `iris_missing_extra_cols_wrong_class`, i want to know that `iris_missing_extra_cols_wrong_class` is missing Sepal.Length, has an extra column Specieso, and that Species should  be a factor but instead is a character.
+
+finally, if the data frames are the same, it would be nice to have a function that returns TRUE or just the original data.
+
+so! what can i use to get this?
+
+# the functions
+
+## `dplyr::all_equal()`
+
+let's check out some comparisons using dplyr::all_equal(), suggested by [Dilsher Dhillon](https://twitter.com/dhillon_stats/status/1229517066534817793)!
+
+first, what happens if the data frames are the same?
+
+```{r}
+all_equal(iris, iris)
+```
+
+nice
+
+if they are the same, but a different order?
+
+```{r}
+all_equal(iris, iris_diff_order)
+```
+
+wena
+
+if there are missing and extra columns?
+
+```{r}
+all_equal(iris, iris_missing_extra_cols)
+```
+
+if there's an incorrect variable class?
+
+```{r}
+all_equal(iris, iris_wrong_class)
+```
+
+what about wrong columns and the wrong class?
+
+```{r}
+all_equal(iris, iris_missing_extra_cols_wrong_class)
+```
+
+looks like however `dplyr::all_equal()` works, reporting on the missing/extra columns is prioritized over reporting on the incorrect variable class. this is not great but not a *huge* deal to me - the function could report on the wrong columns, they get fixed, and *then* it reports on the wrong class.
+
+overall, i do like the nice printing, e.g. "cols in y but not in x", and these could probably be str_replace-ified in a function to supply the actual data frame names (e.g. iris vs iris_wrong_class).
+
+i'm running the version of dplyr on CRAN - i had a dev version installed earlier and some of the messages [looked different](https://github.com/tidyverse/dplyr/blob/master/R/all-equal.r#L74). if these will be changing (that's ok!) i wouldn't want to rely on altering the string output for creating my own errors, since the strings could chang, and i don't necessarily want to require dplyr 1.0.0 in a package just for all_equal strings :~)
+
+## `janitor::compare_df_cols()`
+
+i consider myself a big fan of janitor but there's always new functions in there that surprise me! thank you to [Rebecca Janis](https://twitter.com/rbjanis5/status/1229523325564727298) for mentioning this (and sharing her own [function for comparing column classes](https://gist.github.com/rbjanis/44dbcecb2c96c11defdb7892ad8158fb))!
+
+let's go in the same order. what happens if the data frames are the same?
+
+```{r, message = FALSE}
+library(janitor)
+
+compare_df_cols(iris, iris)
+```
+
+it just returns a comparison of the columns ()
+(what's in both data frames, and their classes in each).
+
+you can set an option only to return things that *don't* match (or things that do):
+
+```{r}
+compare_df_cols(iris, iris, return = "mismatch")
+```
+
+(in this case, nothing).
+
+i assume that this will be robust to different order of columns, but let's double check:
+
+```{r}
+compare_df_cols(iris, iris_diff_order)
+```
+
+cool
+
+what about missing or extra columns?
+
+```{r}
+compare_df_cols(iris, iris_missing_extra_cols)
+```
+
+i like this because it shows all columns in both, and what their types are, by data frame (NA if the column isn't in that df)
+
+strangly enough, a "mismatch" here is a mismatch in class, and NA does not count as a mismatch:
+
+```{r}
+compare_df_cols(iris, iris_missing_extra_cols, return = "mismatch")
+```
+
+and does count as a match `r emo::ji("upside_down_face")`
+
+```{r}
+compare_df_cols(iris, iris_missing_extra_cols, return = "match")
+```
+
+what about if the variable classes don't match?
+
+```{r}
+compare_df_cols(iris, iris_wrong_class, return = "mismatch")
+```
+
+i like this because you can easily construst your own message from this structure, using glue:
+
+```{r, message = FALSE}
+library(glue)
+
+compare_df_cols(iris, iris_wrong_class, return = "mismatch") %>%
+  mutate(message = glue("Column `{column_name}`: expected class {iris}, got class {iris_wrong_class}")) %>%
+  pull(message)
+```
+
+and the resulting data frame can be filtered manually when the filters from "mismatch" aren't what i want, to see all differences:
+
+```{r}
+compare_df_cols(iris, iris_missing_extra_cols_wrong_class) %>%
+  filter(is.na(iris) | is.na(iris_missing_extra_cols_wrong_class) |
+    iris != iris_missing_extra_cols_wrong_class)
+```
+
+## `vetr::alike()`
+
+next up is `vetr::alike()`! this is a new package to me, excited to see what it can do `r emo::ji("mag")`! thanks to [Brodie G](https://twitter.com/BrodieGaslam/status/1229520931451789312) for suggesting (and creating!) it.
+
+again, let's start off checking on data frames that match:
+
+```{r}
+library(vetr)
+
+alike(iris, iris)
+```
+
+cool, what about different order of columns?
+
+```{r}
+alike(iris, iris_diff_order)
+```
+
+uh oh
+
+what about a data frame with missing and extra columns?
+
+```{r}
+alike(iris, iris_missing_extra_cols)
+```
+
+this only tells me that one of the column names is wrong (the first one), and not what's extra.
+
+it *can* identify when there's extra columns:
+
+```{r}
+alike(iris, iris_extra_cols)
+```
+
+but doesn't say what they are. similarly to `dplyr::all_equal()`, it seems like it prioritizes one kind of reporting (an incorrect column name) and doesn't indicate other issues.
+
+let's look at an incorrect class:
+
+```{r}
+alike(iris, iris_wrong_class)
+```
+
+i like this format - says what it should be, and what it actually is.
+
+## `testthat::expect_equal()`
+
+this one is my idea `r emo::ji("innocent")` because i love testthat
+
+when the data frames are the same, `expect_equal()` returns:
+
+```{r}
+library(testthat)
+
+expect_equal(iris, iris)
+```
+
+nothing. well actually, it returns the data frame invisibly:
+
+```{r}
+x <- expect_equal(iris, iris)
+
+x
+```
+
+but doesn't print it automatially, probably since it's usually used within a `test_that()` call.
+
+when there are missing/extra columns:
+
+```{r, error = TRUE}
+expect_equal(iris, iris_missing_extra_cols)
+```
+
+the reporting is very similar (the same?) as from `dplyr::all_equal()` `r emo::ji("thinking")` are these the same functions?
+
+```{r, error = TRUE}
+expect_equal(iris, iris_wrong_class)
+```
+
+ok yes, the same as `dplyr::all_equal()` but returning an error instead of a string. it probably just calls `all_equal()`. maybe i shouldn't have bragged that this one was *my* idea `r emo::ji("joy")`
+
+## `diffdf::diffdf()`
+
+[Marianna Foos](https://twitter.com/MariannaFoos/status/1229570688073322496) swept in while i was writing this post and suggested diffdf!
+
+```{r}
+library(diffdf)
+
+diffdf(iris, iris)
+```
+
+thank you, diffdf!
+
+```{r}
+diffdf(iris, iris_diff_order)
+```
+
+i agree!
+
+```{r}
+diffdf(iris, iris_missing_extra_cols)
+```
+
+shit ok! we got DIFFERENCES !!
+
+```{r}
+diffdf(iris, iris_wrong_class)
+```
+
+i don't know what a mode is (something related to factors, i guess!) but i like that it reports the different classes in Species.
+
+this function also returns a list of data frames with issues invisibly (i surpressed warnings because it was yelling ok)
+
+```{r}
+x <- diffdf(iris, iris_missing_extra_cols_wrong_class, suppress_warnings = TRUE)
+
+x[["VarClassDiffs"]]
+x[["ExtColsBase"]]
+x[["ExtColsComp"]]
+```
+
+this is similar to the kind of information you get from `janitor::compare_df_cols()`, and i like it!
+
+# comparing the functions
+
+i have a bunch of functions to compare, on a bunch of criteria!
+
+1. iris == iris `r emo::ji("yum")`
+2. iris in a different order is still iris
+3. detects missing columns
+4. detects extra columns
+5. detects missing *and* extra columns
+7. detects difference in class
+8. detects different columns *and* difference in class
+9. nice strings to use for messages
+10. returns data (that i can use to BYOmessages)
+
+i'm not going to include `testthat::test_equal()` in the comparison, since it's so similar (read: basically the same) to `dplyr::all_equal()`
+
+```{r, echo = FALSE}
+yes <- "\U2705"
+no <- "\U274C"
+tibble::tribble(
+  ~metric, ~`dplyr::all_equal()`, ~`janitor::compare_df_cols()`, ~`vetr::alike()`, ~`diffdf::diffdf()`,
+  "iris is iris", yes, yes, yes, yes,
+  "column swapped iris is iris", yes, yes, no, yes,
+  "missing columns", yes, yes, yes, yes,
+  "extra columns", yes, yes, yes, yes,
+  "missing *and* extra columns", yes, yes, no, yes,
+  "difference in class", yes, yes, yes, yes,
+  "different columns *and* classes", no, yes, no, yes,
+  "nice strings to use for messages", yes, no, paste0(yes, no), no,
+  "returns data on differences", no, yes, no, yes
+) %>%
+  knitr::kable(format = "html", align = "lccccc", col.names = c("", names(.)[-1])) %>%
+  kableExtra::kable_styling(full_width = TRUE)
+```
+
+# what to do what to do
+
+ok, so what did i end up doing? combining things, of course!
+
+i loved learning about new packages and seeing what's available in packages i already know. i am inclined to use stuff from dplyr and janitor because they're often already dependencies in my work.
+
+so, i decided to cobble something together using the data available from `janitor::compare_df_cols()`, and the basic check of `dplyr::all_equal()` as a jumping off point, and  i borrowed some of the message/error/etc wording from the packages i explored. i also have my function return the original data if all checks pass so that it can easily be used in a pipeline!
+
+i won't belabour you with the [source code](https://gist.github.com/sharlagelfand/4d2713ca2cdd106bdecfca0130007a5f), but here's how it works:
+
+```{r, include = FALSE}
+sharla_diff <- function(df, expected_df) {
+  data_as_expected <- dplyr::all_equal(expected_df, df)
+
+  if (!isTRUE(data_as_expected)) {
+    data_diffs <- janitor::compare_df_cols(expected_df, df)
+
+    cols_mismatch <- dplyr::filter(data_diffs, is.na(expected_df) | is.na(df))
+
+    extra_cols <- cols_mismatch %>%
+      dplyr::filter(is.na(expected_df)) %>%
+      dplyr::pull(column_name)
+
+    missing_cols <- cols_mismatch %>%
+      dplyr::filter(is.na(df)) %>%
+      dplyr::pull(column_name)
+
+    type_mismatch <- dplyr::filter(data_diffs, expected_df != df)
+
+    if (length(extra_cols) > 0) {
+      warning("`", deparse(substitute(df)), "`", " contains extra column(s): ",
+        glue::glue_collapse(extra_cols, sep = ", "), ".",
+        call. = FALSE
+      )
+    } 
+    
+    if (length(missing_cols) > 0) {
+      stop("`", deparse(substitute(df)), "`", " is missing column(s): ", glue::glue_collapse(missing_cols, sep = ", "), ".",
+        call. = FALSE
+      )
+    } 
+    
+    if (nrow(type_mismatch) > 0) {
+      type_mismatch_errors <- type_mismatch %>%
+        dplyr::mutate(error = glue::glue("{column_name} should be class {expected_df}, is {df}")) %>%
+        dplyr::pull(error) %>%
+        as.character() %>%
+        paste0("\n")
+
+      stop("`", deparse(substitute(df)), "`", " column types are not as expected. These columns have issues:\n", type_mismatch_errors,
+        call. = FALSE
+      )
+    }
+  }
+
+  df
+}
+```
+
+
+```{r, error = TRUE}
+sharla_diff(iris, iris)
+
+sharla_diff(iris, iris_diff_order)
+
+sharla_diff(iris, iris_missing_extra_cols)
+
+sharla_diff(iris, iris_wrong_class)
+
+sharla_diff(iris, iris_missing_extra_cols_wrong_class)
+```
+
+`sharla_diff()` errors when it's missing columns, so it doesn't have the chance to look for the wrong class in `iris_missing_extra_cols_wrong_class` (like `dplyr::all_equal()`!). as i mentioned, that's not a huge deal for me.
+
+i'm sure this function isn't perfect and will be changed as i see issues with it. that's it for now! please see the honourable mentions appendix if you think i snubbed your package ok!!!
+
+# honourable mentions
+
+## packages for comparing values
+
+some people suggested packages for comparing the actual *values* within a data frame instead of the data frame name/classes. that's not what i was looking for, but helpful anyways! 
+
+if you want to do that:
+
+`visdat` in general is such an awesome package for visually understanding your data. [Nick Tierney](https://twitter.com/nj_tierney/status/1229531977100840961) is its creator (and suggestor!), specifically suggesting [visdat::vis_compare()](https://visdat.njtierney.com/#using-vis_compare) for visually comparing values.
+
+[dataCompareR::rCompare()](https://cran.r-project.org/web/packages/dataCompareR/vignettes/dataCompareR.html) can be used for comparing values very robustly. thank you to [Robert Campbell](https://twitter.com/robertc_93/status/1229544225060118528) for the suggestion!
+
+a little unrelated, but [diffobj](https://cran.r-project.org/web/packages/diffobj/vignettes/diffobj.html) looks very cool for visualizing diffs of objects (duh, hence the name) within your console. ty to [Tokhir Dadaev](https://twitter.com/zx8754/status/1229514956112113666) and [Brodie Gaslam](https://twitter.com/BrodieGaslam/status/1229518614853750784) for mentioning (and Brodie for creating - a double for both in this post!).
+
+## daff::diff_data() and arsenal::comparedf()
+
+ok, thank you and no offence to everyone ([Erin Grand](https://twitter.com/astroeringrand/status/1229520088073736193), [Antoine Fabri](https://twitter.com/antoine_fabri/status/1229527662202363911), [Eric Polley](https://twitter.com/ecpolley/status/1229557115812970498), [Benjamin Gowan](https://twitter.com/Benjaming_G/status/1229514790734663680)) that suggested these!!! [daff::diff_data()](https://github.com/edwindj/daff/blob/master/README.md) doesn't render in rmarkdown and [arsenal::comparedf()](https://cran.r-project.org/web/packages/arsenal/vignettes/comparedf.html) is a little too robust for what i'm looking for.
+
+either way, both methods provide more information than i want and don't really lend themselves to easy creation of errors or warnings. if you are looking for a full report (tm) of what is different between two data frames, these might be for you!
+
+## vctrs::vec_assert()
+
+according to [Hadley](https://twitter.com/hadleywickham/status/1229517175062269952), `vctrs::vec_assert()` might one day create the kind of messages i want about classes (e.g. expected Date, got character). i look forward to it (and to learning vctrs someday)!
+
+ok that's *really* it! bye!

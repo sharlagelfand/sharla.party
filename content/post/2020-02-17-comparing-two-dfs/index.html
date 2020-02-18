@@ -1,0 +1,625 @@
+---
+title: "comparing two data frames: one #rstats, many ways!"
+author: Sharla Gelfand
+date: "2020-02-17"
+slug: comparing-two-dfs
+---
+
+<script src="/rmarkdown-libs/kePrint/kePrint.js"></script>
+
+
+<p>today i tweeted asking about packages to compare two data frames (specifically, their variable names and types):</p>
+{{% tweet "1229512910591885317" %}}
+<p>judging by the ratio (18 replies to 38 likes!) at the time of writing, <em>yes</em> there are definitely packages to do this! in this post, i want to explore the (many) different and excellent methods for comparing two data frames in #rstats.</p>
+<div id="the-data" class="section level1">
+<h1>the data</h1>
+<p>first, what are we talking about? imagine i have some data coming in, and i know what it should look like. it should look like <code>iris</code>! 💮</p>
+<pre class="r"><code>iris</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+##          &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;fct&gt;  
+## 1          5.1         3.5          1.4         0.2 setosa 
+## 2          4.9         3            1.4         0.2 setosa 
+## 3          4.7         3.2          1.3         0.2 setosa 
+## 4          4.6         3.1          1.5         0.2 setosa 
+## 5          5           3.6          1.4         0.2 setosa 
+## # … with 145 more rows</code></pre>
+<p>so, <code>iris</code> has 5 columns: Sepal.Length, Sepal.Width, Petal.Length, and Species. the column types are: numeric/double (times 4!) and factor.</p>
+<p>the data i’m bringing in could have a number of problems.</p>
+<p>it could be missing a column:</p>
+<pre class="r"><code>library(dplyr)
+
+iris_missing_cols &lt;- iris %&gt;%
+  select(-Sepal.Length)
+
+iris_missing_cols</code></pre>
+<pre><code>## # A tibble: 150 x 4
+##   Sepal.Width Petal.Length Petal.Width Species
+##         &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;fct&gt;  
+## 1         3.5          1.4         0.2 setosa 
+## 2         3            1.4         0.2 setosa 
+## 3         3.2          1.3         0.2 setosa 
+## 4         3.1          1.5         0.2 setosa 
+## 5         3.6          1.4         0.2 setosa 
+## # … with 145 more rows</code></pre>
+<p>it could have an extra column:</p>
+<pre class="r"><code>iris_extra_cols &lt;- iris %&gt;%
+  mutate(Specieso = Species)
+
+iris_extra_cols</code></pre>
+<pre><code>## # A tibble: 150 x 6
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species Specieso
+##          &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;fct&gt;   &lt;fct&gt;   
+## 1          5.1         3.5          1.4         0.2 setosa  setosa  
+## 2          4.9         3            1.4         0.2 setosa  setosa  
+## 3          4.7         3.2          1.3         0.2 setosa  setosa  
+## 4          4.6         3.1          1.5         0.2 setosa  setosa  
+## 5          5           3.6          1.4         0.2 setosa  setosa  
+## # … with 145 more rows</code></pre>
+<p>it could be missing a column <em>and</em> have an extra column:</p>
+<pre class="r"><code>iris_missing_extra_cols &lt;- iris %&gt;%
+  select(-Sepal.Length) %&gt;%
+  mutate(Specieso = Species)
+
+iris_missing_extra_cols</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Sepal.Width Petal.Length Petal.Width Species Specieso
+##         &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;fct&gt;   &lt;fct&gt;   
+## 1         3.5          1.4         0.2 setosa  setosa  
+## 2         3            1.4         0.2 setosa  setosa  
+## 3         3.2          1.3         0.2 setosa  setosa  
+## 4         3.1          1.5         0.2 setosa  setosa  
+## 5         3.6          1.4         0.2 setosa  setosa  
+## # … with 145 more rows</code></pre>
+<p>it could have a column of the wrong class:</p>
+<pre class="r"><code>iris_wrong_class &lt;- iris %&gt;%
+  mutate(Species = as.character(Species))
+
+iris_wrong_class</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+##          &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;chr&gt;  
+## 1          5.1         3.5          1.4         0.2 setosa 
+## 2          4.9         3            1.4         0.2 setosa 
+## 3          4.7         3.2          1.3         0.2 setosa 
+## 4          4.6         3.1          1.5         0.2 setosa 
+## 5          5           3.6          1.4         0.2 setosa 
+## # … with 145 more rows</code></pre>
+<p>or it could have all three!</p>
+<pre class="r"><code>iris_missing_extra_cols_wrong_class &lt;- iris_missing_extra_cols %&gt;%
+  mutate(Species = as.character(Species))
+
+iris_missing_extra_cols_wrong_class</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Sepal.Width Petal.Length Petal.Width Species Specieso
+##         &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;chr&gt;   &lt;fct&gt;   
+## 1         3.5          1.4         0.2 setosa  setosa  
+## 2         3            1.4         0.2 setosa  setosa  
+## 3         3.2          1.3         0.2 setosa  setosa  
+## 4         3.1          1.5         0.2 setosa  setosa  
+## 5         3.6          1.4         0.2 setosa  setosa  
+## # … with 145 more rows</code></pre>
+<p>one last thing is not a problem, but i’m curious to see if the packages i explore will think it is. this is when the column <em>order</em> is different:</p>
+<pre class="r"><code>iris_diff_order &lt;- iris %&gt;%
+  select(Species, everything())
+
+iris_diff_order</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Species Sepal.Length Sepal.Width Petal.Length Petal.Width
+##   &lt;fct&gt;          &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt;
+## 1 setosa           5.1         3.5          1.4         0.2
+## 2 setosa           4.9         3            1.4         0.2
+## 3 setosa           4.7         3.2          1.3         0.2
+## 4 setosa           4.6         3.1          1.5         0.2
+## 5 setosa           5           3.6          1.4         0.2
+## # … with 145 more rows</code></pre>
+</div>
+<div id="what-i-dream-of" class="section level1">
+<h1>what i dream of ☁️</h1>
+<p>in the tweet i mentioned i’m looking for packages that will provide me with nice, descriptive errors (or robust data to create my own) describing what’s different between the data sets.</p>
+<p>what does this look like? two main things.</p>
+<ol style="list-style-type: decimal">
+<li><p>saying what columns are missing (and what’s optionally, what’s extra).</p>
+<p>for <code>iris</code> vs <code>iris_missing_cols</code>, i want to know that <code>iris_missing_cols</code> is missing a column called Sepal.Length.</p>
+<p>for <code>iris</code> vs <code>iris_extra_cols</code>, i want to know that <code>iris_extra_cols</code> has an extra column called Specieso.</p>
+<p>for <code>iris</code> vs <code>iris_missing_extra_cols</code>, i want to know that <code>iris_missing_extra_cols</code> is missing Sepal.Length and has an extra column Specieso.</p></li>
+<li><p>saying what classes are different.</p>
+<p>for <code>iris</code> vs <code>iris_wrong_class</code>, i want to know that Species <em>should be</em> a factor, but it’s a character.</p></li>
+</ol>
+<p>ok, putting them together, three things.</p>
+<ol start="3" style="list-style-type: decimal">
+<li><p>saying what columns are missing, what’s extra, and what classes are different.</p>
+<p>for <code>iris</code> vs <code>iris_missing_extra_cols_wrong_class</code>, i want to know that <code>iris_missing_extra_cols_wrong_class</code> is missing Sepal.Length, has an extra column Specieso, and that Species should be a factor but instead is a character.</p></li>
+</ol>
+<p>finally, if the data frames are the same, it would be nice to have a function that returns TRUE or just the original data.</p>
+<p>so! what can i use to get this?</p>
+</div>
+<div id="the-functions" class="section level1">
+<h1>the functions</h1>
+<div id="dplyrall_equal" class="section level2">
+<h2><code>dplyr::all_equal()</code></h2>
+<p>let’s check out some comparisons using dplyr::all_equal(), suggested by <a href="https://twitter.com/dhillon_stats/status/1229517066534817793">Dilsher Dhillon</a>!</p>
+<p>first, what happens if the data frames are the same?</p>
+<pre class="r"><code>all_equal(iris, iris)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>nice</p>
+<p>if they are the same, but a different order?</p>
+<pre class="r"><code>all_equal(iris, iris_diff_order)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>wena</p>
+<p>if there are missing and extra columns?</p>
+<pre class="r"><code>all_equal(iris, iris_missing_extra_cols)</code></pre>
+<pre><code>## [1] &quot;Cols in y but not x: `Specieso`. &quot;    
+## [2] &quot;Cols in x but not y: `Sepal.Length`. &quot;</code></pre>
+<p>if there’s an incorrect variable class?</p>
+<pre class="r"><code>all_equal(iris, iris_wrong_class)</code></pre>
+<pre><code>## [1] &quot;Incompatible type for column `Species`: x factor, y character&quot;</code></pre>
+<p>what about wrong columns and the wrong class?</p>
+<pre class="r"><code>all_equal(iris, iris_missing_extra_cols_wrong_class)</code></pre>
+<pre><code>## [1] &quot;Cols in y but not x: `Specieso`. &quot;    
+## [2] &quot;Cols in x but not y: `Sepal.Length`. &quot;</code></pre>
+<p>looks like however <code>dplyr::all_equal()</code> works, reporting on the missing/extra columns is prioritized over reporting on the incorrect variable class. this is not great but not a <em>huge</em> deal to me - the function could report on the wrong columns, they get fixed, and <em>then</em> it reports on the wrong class.</p>
+<p>overall, i do like the nice printing, e.g. “cols in y but not in x”, and these could probably be str_replace-ified in a function to supply the actual data frame names (e.g. iris vs iris_wrong_class).</p>
+<p>i’m running the version of dplyr on CRAN - i had a dev version installed earlier and some of the messages <a href="https://github.com/tidyverse/dplyr/blob/master/R/all-equal.r#L74">looked different</a>. if these will be changing (that’s ok!) i wouldn’t want to rely on altering the string output for creating my own errors, since the strings could chang, and i don’t necessarily want to require dplyr 1.0.0 in a package just for all_equal strings :~)</p>
+</div>
+<div id="janitorcompare_df_cols" class="section level2">
+<h2><code>janitor::compare_df_cols()</code></h2>
+<p>i consider myself a big fan of janitor but there’s always new functions in there that surprise me! thank you to <a href="https://twitter.com/rbjanis5/status/1229523325564727298">Rebecca Janis</a> for mentioning this (and sharing her own <a href="https://gist.github.com/rbjanis/44dbcecb2c96c11defdb7892ad8158fb">function for comparing column classes</a>)!</p>
+<p>let’s go in the same order. what happens if the data frames are the same?</p>
+<pre class="r"><code>library(janitor)
+
+compare_df_cols(iris, iris)</code></pre>
+<pre><code>##    column_name  iris.x  iris.y
+## 1 Petal.Length numeric numeric
+## 2  Petal.Width numeric numeric
+## 3 Sepal.Length numeric numeric
+## 4  Sepal.Width numeric numeric
+## 5      Species  factor  factor</code></pre>
+<p>it just returns a comparison of the columns ()
+(what’s in both data frames, and their classes in each).</p>
+<p>you can set an option only to return things that <em>don’t</em> match (or things that do):</p>
+<pre class="r"><code>compare_df_cols(iris, iris, return = &quot;mismatch&quot;)</code></pre>
+<pre><code>## [1] column_name iris.x      iris.y     
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+<p>(in this case, nothing).</p>
+<p>i assume that this will be robust to different order of columns, but let’s double check:</p>
+<pre class="r"><code>compare_df_cols(iris, iris_diff_order)</code></pre>
+<pre><code>##    column_name    iris iris_diff_order
+## 1 Petal.Length numeric         numeric
+## 2  Petal.Width numeric         numeric
+## 3 Sepal.Length numeric         numeric
+## 4  Sepal.Width numeric         numeric
+## 5      Species  factor          factor</code></pre>
+<p>cool</p>
+<p>what about missing or extra columns?</p>
+<pre class="r"><code>compare_df_cols(iris, iris_missing_extra_cols)</code></pre>
+<pre><code>##    column_name    iris iris_missing_extra_cols
+## 1 Petal.Length numeric                 numeric
+## 2  Petal.Width numeric                 numeric
+## 3 Sepal.Length numeric                    &lt;NA&gt;
+## 4  Sepal.Width numeric                 numeric
+## 5      Species  factor                  factor
+## 6     Specieso    &lt;NA&gt;                  factor</code></pre>
+<p>i like this because it shows all columns in both, and what their types are, by data frame (NA if the column isn’t in that df)</p>
+<p>strangly enough, a “mismatch” here is a mismatch in class, and NA does not count as a mismatch:</p>
+<pre class="r"><code>compare_df_cols(iris, iris_missing_extra_cols, return = &quot;mismatch&quot;)</code></pre>
+<pre><code>## [1] column_name             iris                    iris_missing_extra_cols
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+<p>and does count as a match 🙃</p>
+<pre class="r"><code>compare_df_cols(iris, iris_missing_extra_cols, return = &quot;match&quot;)</code></pre>
+<pre><code>##    column_name    iris iris_missing_extra_cols
+## 1 Petal.Length numeric                 numeric
+## 2  Petal.Width numeric                 numeric
+## 3 Sepal.Length numeric                    &lt;NA&gt;
+## 4  Sepal.Width numeric                 numeric
+## 5      Species  factor                  factor
+## 6     Specieso    &lt;NA&gt;                  factor</code></pre>
+<p>what about if the variable classes don’t match?</p>
+<pre class="r"><code>compare_df_cols(iris, iris_wrong_class, return = &quot;mismatch&quot;)</code></pre>
+<pre><code>##   column_name   iris iris_wrong_class
+## 1     Species factor        character</code></pre>
+<p>i like this because you can easily construst your own message from this structure, using glue:</p>
+<pre class="r"><code>library(glue)
+
+compare_df_cols(iris, iris_wrong_class, return = &quot;mismatch&quot;) %&gt;%
+  mutate(message = glue(&quot;Column `{column_name}`: expected class {iris}, got class {iris_wrong_class}&quot;)) %&gt;%
+  pull(message)</code></pre>
+<pre><code>## Column `Species`: expected class factor, got class character</code></pre>
+<p>and the resulting data frame can be filtered manually when the filters from “mismatch” aren’t what i want, to see all differences:</p>
+<pre class="r"><code>compare_df_cols(iris, iris_missing_extra_cols_wrong_class) %&gt;%
+  filter(is.na(iris) | is.na(iris_missing_extra_cols_wrong_class) |
+    iris != iris_missing_extra_cols_wrong_class)</code></pre>
+<pre><code>##    column_name    iris iris_missing_extra_cols_wrong_class
+## 1 Sepal.Length numeric                                &lt;NA&gt;
+## 2      Species  factor                           character
+## 3     Specieso    &lt;NA&gt;                              factor</code></pre>
+</div>
+<div id="vetralike" class="section level2">
+<h2><code>vetr::alike()</code></h2>
+<p>next up is <code>vetr::alike()</code>! this is a new package to me, excited to see what it can do 🔍! thanks to <a href="https://twitter.com/BrodieGaslam/status/1229520931451789312">Brodie G</a> for suggesting (and creating!) it.</p>
+<p>again, let’s start off checking on data frames that match:</p>
+<pre class="r"><code>library(vetr)
+
+alike(iris, iris)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>cool, what about different order of columns?</p>
+<pre class="r"><code>alike(iris, iris_diff_order)</code></pre>
+<pre><code>## [1] &quot;`names(iris_diff_order)[1]` should be \&quot;Sepal.Length\&quot; (is \&quot;Species\&quot;)&quot;</code></pre>
+<p>uh oh</p>
+<p>what about a data frame with missing and extra columns?</p>
+<pre class="r"><code>alike(iris, iris_missing_extra_cols)</code></pre>
+<pre><code>## [1] &quot;`names(iris_missing_extra_cols)[1]` should be \&quot;Sepal.Length\&quot; (is \&quot;Sepal.Width\&quot;)&quot;</code></pre>
+<p>this only tells me that one of the column names is wrong (the first one), and not what’s extra.</p>
+<p>it <em>can</em> identify when there’s extra columns:</p>
+<pre class="r"><code>alike(iris, iris_extra_cols)</code></pre>
+<pre><code>## [1] &quot;`iris_extra_cols` should have 5 columns (has 6)&quot;</code></pre>
+<p>but doesn’t say what they are. similarly to <code>dplyr::all_equal()</code>, it seems like it prioritizes one kind of reporting (an incorrect column name) and doesn’t indicate other issues.</p>
+<p>let’s look at an incorrect class:</p>
+<pre class="r"><code>alike(iris, iris_wrong_class)</code></pre>
+<pre><code>## [1] &quot;`iris_wrong_class$Species` should be class \&quot;factor\&quot; (is \&quot;character\&quot;)&quot;</code></pre>
+<p>i like this format - says what it should be, and what it actually is.</p>
+</div>
+<div id="testthatexpect_equal" class="section level2">
+<h2><code>testthat::expect_equal()</code></h2>
+<p>this one is my idea 😇 because i love testthat</p>
+<p>when the data frames are the same, <code>expect_equal()</code> returns:</p>
+<pre class="r"><code>library(testthat)
+
+expect_equal(iris, iris)</code></pre>
+<p>nothing. well actually, it returns the data frame invisibly:</p>
+<pre class="r"><code>x &lt;- expect_equal(iris, iris)
+
+x</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+##          &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;fct&gt;  
+## 1          5.1         3.5          1.4         0.2 setosa 
+## 2          4.9         3            1.4         0.2 setosa 
+## 3          4.7         3.2          1.3         0.2 setosa 
+## 4          4.6         3.1          1.5         0.2 setosa 
+## 5          5           3.6          1.4         0.2 setosa 
+## # … with 145 more rows</code></pre>
+<p>but doesn’t print it automatially, probably since it’s usually used within a <code>test_that()</code> call.</p>
+<p>when there are missing/extra columns:</p>
+<pre class="r"><code>expect_equal(iris, iris_missing_extra_cols)</code></pre>
+<pre><code>## Error: `iris` not equal to `iris_missing_extra_cols`.
+## Cols in y but not x: `Specieso`. 
+## Cols in x but not y: `Sepal.Length`.</code></pre>
+<p>the reporting is very similar (the same?) as from <code>dplyr::all_equal()</code> 🤔 are these the same functions?</p>
+<pre class="r"><code>expect_equal(iris, iris_wrong_class)</code></pre>
+<pre><code>## Error: `iris` not equal to `iris_wrong_class`.
+## Incompatible type for column `Species`: x factor, y character</code></pre>
+<p>ok yes, the same as <code>dplyr::all_equal()</code> but returning an error instead of a string. it probably just calls <code>all_equal()</code>. maybe i shouldn’t have bragged that this one was <em>my</em> idea 😂</p>
+</div>
+<div id="diffdfdiffdf" class="section level2">
+<h2><code>diffdf::diffdf()</code></h2>
+<p><a href="https://twitter.com/MariannaFoos/status/1229570688073322496">Marianna Foos</a> swept in while i was writing this post and suggested diffdf!</p>
+<pre class="r"><code>library(diffdf)
+
+diffdf(iris, iris)</code></pre>
+<pre><code>## No issues were found!</code></pre>
+<p>thank you, diffdf!</p>
+<pre class="r"><code>diffdf(iris, iris_diff_order)</code></pre>
+<pre><code>## No issues were found!</code></pre>
+<p>i agree!</p>
+<pre class="r"><code>diffdf(iris, iris_missing_extra_cols)</code></pre>
+<pre><code>## Warning in diffdf(iris, iris_missing_extra_cols): 
+## There are columns in BASE that are not in COMPARE !!
+## There are columns in COMPARE that are not in BASE !!</code></pre>
+<pre><code>## Differences found between the objects!
+## 
+## A summary is given below.
+## 
+## There are columns in BASE that are not in COMPARE !!
+## All rows are shown in table below
+## 
+##   ==============
+##      COLUMNS    
+##   --------------
+##    Sepal.Length 
+##   --------------
+## 
+## There are columns in COMPARE that are not in BASE !!
+## All rows are shown in table below
+## 
+##   ==========
+##    COLUMNS  
+##   ----------
+##    Specieso 
+##   ----------</code></pre>
+<p>shit ok! we got DIFFERENCES !!</p>
+<pre class="r"><code>diffdf(iris, iris_wrong_class)</code></pre>
+<pre><code>## Warning in diffdf(iris, iris_wrong_class): 
+## There are columns in BASE and COMPARE with different modes !!
+## There are columns in BASE and COMPARE with different classes !!</code></pre>
+<pre><code>## Differences found between the objects!
+## 
+## A summary is given below.
+## 
+## There are columns in BASE and COMPARE with different modes !!
+## All rows are shown in table below
+## 
+##   ================================
+##    VARIABLE  MODE.BASE  MODE.COMP 
+##   --------------------------------
+##    Species    numeric   character 
+##   --------------------------------
+## 
+## There are columns in BASE and COMPARE with different classes !!
+## All rows are shown in table below
+## 
+##   ==================================
+##    VARIABLE  CLASS.BASE  CLASS.COMP 
+##   ----------------------------------
+##    Species     factor    character  
+##   ----------------------------------</code></pre>
+<p>i don’t know what a mode is (something related to factors, i guess!) but i like that it reports the different classes in Species.</p>
+<p>this function also returns a list of data frames with issues invisibly (i surpressed warnings because it was yelling ok)</p>
+<pre class="r"><code>x &lt;- diffdf(iris, iris_missing_extra_cols_wrong_class, suppress_warnings = TRUE)
+
+x[[&quot;VarClassDiffs&quot;]]</code></pre>
+<pre><code>##   VARIABLE CLASS.BASE CLASS.COMP
+## 6  Species     factor  character</code></pre>
+<pre class="r"><code>x[[&quot;ExtColsBase&quot;]]</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   COLUMNS     
+## * &lt;chr&gt;       
+## 1 Sepal.Length</code></pre>
+<pre class="r"><code>x[[&quot;ExtColsComp&quot;]]</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   COLUMNS 
+## * &lt;chr&gt;   
+## 1 Specieso</code></pre>
+<p>this is similar to the kind of information you get from <code>janitor::compare_df_cols()</code>, and i like it!</p>
+</div>
+</div>
+<div id="comparing-the-functions" class="section level1">
+<h1>comparing the functions</h1>
+<p>i have a bunch of functions to compare, on a bunch of criteria!</p>
+<ol style="list-style-type: decimal">
+<li>iris == iris 😋</li>
+<li>iris in a different order is still iris</li>
+<li>detects missing columns</li>
+<li>detects extra columns</li>
+<li>detects missing <em>and</em> extra columns</li>
+<li>detects difference in class</li>
+<li>detects different columns <em>and</em> difference in class</li>
+<li>nice strings to use for messages</li>
+<li>returns data (that i can use to BYOmessages)</li>
+</ol>
+<p>i’m not going to include <code>testthat::test_equal()</code> in the comparison, since it’s so similar (read: basically the same) to <code>dplyr::all_equal()</code></p>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:center;">
+dplyr::all_equal()
+</th>
+<th style="text-align:center;">
+janitor::compare_df_cols()
+</th>
+<th style="text-align:center;">
+vetr::alike()
+</th>
+<th style="text-align:center;">
+diffdf::diffdf()
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+iris is iris
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+column swapped iris is iris
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+❌
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+missing columns
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+extra columns
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+missing <em>and</em> extra columns
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+❌
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+difference in class
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+different columns <em>and</em> classes
+</td>
+<td style="text-align:center;">
+❌
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+❌
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+nice strings to use for messages
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+❌
+</td>
+<td style="text-align:center;">
+✅❌
+</td>
+<td style="text-align:center;">
+❌
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+returns data on differences
+</td>
+<td style="text-align:center;">
+❌
+</td>
+<td style="text-align:center;">
+✅
+</td>
+<td style="text-align:center;">
+❌
+</td>
+<td style="text-align:center;">
+✅
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="what-to-do-what-to-do" class="section level1">
+<h1>what to do what to do</h1>
+<p>ok, so what did i end up doing? combining things, of course!</p>
+<p>i loved learning about new packages and seeing what’s available in packages i already know. i am inclined to use stuff from dplyr and janitor because they’re often already dependencies in my work.</p>
+<p>so, i decided to cobble something together using the data available from <code>janitor::compare_df_cols()</code>, and the basic check of <code>dplyr::all_equal()</code> as a jumping off point, and i borrowed some of the message/error/etc wording from the packages i explored. i also have my function return the original data if all checks pass so that it can easily be used in a pipeline!</p>
+<p>i won’t belabour you with the <a href="https://gist.github.com/sharlagelfand/4d2713ca2cdd106bdecfca0130007a5f">source code</a>, but here’s how it works:</p>
+<pre class="r"><code>sharla_diff(iris, iris)</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+##          &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;fct&gt;  
+## 1          5.1         3.5          1.4         0.2 setosa 
+## 2          4.9         3            1.4         0.2 setosa 
+## 3          4.7         3.2          1.3         0.2 setosa 
+## 4          4.6         3.1          1.5         0.2 setosa 
+## 5          5           3.6          1.4         0.2 setosa 
+## # … with 145 more rows</code></pre>
+<pre class="r"><code>sharla_diff(iris, iris_diff_order)</code></pre>
+<pre><code>## # A tibble: 150 x 5
+##   Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+##          &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;fct&gt;  
+## 1          5.1         3.5          1.4         0.2 setosa 
+## 2          4.9         3            1.4         0.2 setosa 
+## 3          4.7         3.2          1.3         0.2 setosa 
+## 4          4.6         3.1          1.5         0.2 setosa 
+## 5          5           3.6          1.4         0.2 setosa 
+## # … with 145 more rows</code></pre>
+<pre class="r"><code>sharla_diff(iris, iris_missing_extra_cols)</code></pre>
+<pre><code>## Warning: `iris` contains extra column(s): Sepal.Length.</code></pre>
+<pre><code>## Error: `iris` is missing column(s): Specieso.</code></pre>
+<pre class="r"><code>sharla_diff(iris, iris_wrong_class)</code></pre>
+<pre><code>## Error: `iris` column types are not as expected. These columns have issues:
+## Species should be class character, is factor</code></pre>
+<pre class="r"><code>sharla_diff(iris, iris_missing_extra_cols_wrong_class)</code></pre>
+<pre><code>## Warning: `iris` contains extra column(s): Sepal.Length.</code></pre>
+<pre><code>## Error: `iris` is missing column(s): Specieso.</code></pre>
+<p><code>sharla_diff()</code> errors when it’s missing columns, so it doesn’t have the chance to look for the wrong class in <code>iris_missing_extra_cols_wrong_class</code> (like <code>dplyr::all_equal()</code>!). as i mentioned, that’s not a huge deal for me.</p>
+<p>i’m sure this function isn’t perfect and will be changed as i see issues with it. that’s it for now! please see the honourable mentions appendix if you think i snubbed your package ok!!!</p>
+</div>
+<div id="honourable-mentions" class="section level1">
+<h1>honourable mentions</h1>
+<div id="packages-for-comparing-values" class="section level2">
+<h2>packages for comparing values</h2>
+<p>some people suggested packages for comparing the actual <em>values</em> within a data frame instead of the data frame name/classes. that’s not what i was looking for, but helpful anyways!</p>
+<p>if you want to do that:</p>
+<p><code>visdat</code> in general is such an awesome package for visually understanding your data. <a href="https://twitter.com/nj_tierney/status/1229531977100840961">Nick Tierney</a> is its creator (and suggestor!), specifically suggesting <a href="https://visdat.njtierney.com/#using-vis_compare">visdat::vis_compare()</a> for visually comparing values.</p>
+<p><a href="https://cran.r-project.org/web/packages/dataCompareR/vignettes/dataCompareR.html">dataCompareR::rCompare()</a> can be used for comparing values very robustly. thank you to <a href="https://twitter.com/robertc_93/status/1229544225060118528">Robert Campbell</a> for the suggestion!</p>
+<p>a little unrelated, but <a href="https://cran.r-project.org/web/packages/diffobj/vignettes/diffobj.html">diffobj</a> looks very cool for visualizing diffs of objects (duh, hence the name) within your console. ty to <a href="https://twitter.com/zx8754/status/1229514956112113666">Tokhir Dadaev</a> and <a href="https://twitter.com/BrodieGaslam/status/1229518614853750784">Brodie Gaslam</a> for mentioning (and Brodie for creating - a double for both in this post!).</p>
+</div>
+<div id="daffdiff_data-and-arsenalcomparedf" class="section level2">
+<h2>daff::diff_data() and arsenal::comparedf()</h2>
+<p>ok, thank you and no offence to everyone (<a href="https://twitter.com/astroeringrand/status/1229520088073736193">Erin Grand</a>, <a href="https://twitter.com/antoine_fabri/status/1229527662202363911">Antoine Fabri</a>, <a href="https://twitter.com/ecpolley/status/1229557115812970498">Eric Polley</a>, <a href="https://twitter.com/Benjaming_G/status/1229514790734663680">Benjamin Gowan</a>) that suggested these!!! <a href="https://github.com/edwindj/daff/blob/master/README.md">daff::diff_data()</a> doesn’t render in rmarkdown and <a href="https://cran.r-project.org/web/packages/arsenal/vignettes/comparedf.html">arsenal::comparedf()</a> is a little too robust for what i’m looking for.</p>
+<p>either way, both methods provide more information than i want and don’t really lend themselves to easy creation of errors or warnings. if you are looking for a full report (tm) of what is different between two data frames, these might be for you!</p>
+</div>
+<div id="vctrsvec_assert" class="section level2">
+<h2>vctrs::vec_assert()</h2>
+<p>according to <a href="https://twitter.com/hadleywickham/status/1229517175062269952">Hadley</a>, <code>vctrs::vec_assert()</code> might one day create the kind of messages i want about classes (e.g. expected Date, got character). i look forward to it (and to learning vctrs someday)!</p>
+<p>ok that’s <em>really</em> it! bye!</p>
+</div>
+</div>
