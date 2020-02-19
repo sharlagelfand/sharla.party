@@ -21,6 +21,10 @@ links:
   icon_pack: fas
   name: code
   url: "https://github.com/sharlagelfand/sharstudioconf"
+- icon: video
+  icon_pack: fas
+  name: video
+  url: "https://resources.rstudio.com/rstudio-conf-2020/dont-repeat-yourself-talk-to-yourself-repeated-reporting-in-the-r-universe-sharla-gelfand"
 ---
 
 ## Abstract
