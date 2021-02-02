@@ -1,0 +1,300 @@
+---
+title: "Star Trek: The Next Generation catchphrases"
+author: Sharla Gelfand
+date: '2021-02-02'
+slug: []
+categories: []
+tags: []
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-02-01T20:58:39-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+
+
+<p>It was only a matter of time before I reached <a href="https://twitter.com/kearneymw/status/1354640480127111174">“The Sopranos Point”</a> of the pandemic and decided to pick up Star Trek. I thought I might not ~get it~ but turns out that it’s just a soap opera for nerds (🙋)… so it was also only a matter of time before I decided to analyze data from it. I posted <a href="https://twitter.com/sharlagelfand/status/1354881416480358409">a plot on twitter</a> (only click if you want spoilers!), but left the code a mystery (ok no one asked for it). Here it is now!</p>
+<p>At the time I embarked on this little project, we had just wrapped up season 1 of Star Trek: The Next Generation. Now we’re on season 3, but….. let’s just look at Season 1 here.</p>
+<p>The way that the characters speak is so wonderful and distinct, and I wanted to see if text analysis could capture that. Luckily, I didn’t have to work very hard, neither to get the data nor to analyze it, thanks to wonderful packages like <a href="https://leonawicz.github.io/rtrek/index.html">{rtrek}</a>, which contains datasets related to Star Trek - including transcripts! And, of course, where would I be without <a href="https://juliasilge.github.io/tidytext/">{tidytext}</a> for text analysis?</p>
+<p>First, I’ll grab the TNG transcripts via {rtrek} and filter only for the first season:</p>
+<pre class="r"><code>library(rtrek)
+library(dplyr)
+
+transcripts &lt;- st_transcripts() %&gt;%
+  filter(series == &quot;TNG&quot;, season == 1)
+
+transcripts</code></pre>
+<pre><code>## # A tibble: 25 x 10
+##    format  series season number title   production airdate url     url2    text 
+##    &lt;chr&gt;   &lt;chr&gt;   &lt;int&gt;  &lt;int&gt; &lt;chr&gt;        &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;   &lt;chr&gt;   &lt;lis&gt;
+##  1 episode TNG         1      1 Encoun…        101 1987-0… https:… http:/… &lt;tib…
+##  2 episode TNG         1      3 The Na…        103 1987-1… https:… http:/… &lt;tib…
+##  3 episode TNG         1      4 Code o…        104 1987-1… https:… http:/… &lt;tib…
+##  4 episode TNG         1      5 Haven          105 1987-1… https:… http:/… &lt;tib…
+##  5 episode TNG         1      6 Where …        106 1987-1… https:… http:/… &lt;tib…
+##  6 episode TNG         1      7 The La…        107 1987-1… https:… http:/… &lt;tib…
+##  7 episode TNG         1      8 Lonely…        108 1987-1… https:… http:/… &lt;tib…
+##  8 episode TNG         1      9 Justice        109 1987-1… https:… http:/… &lt;tib…
+##  9 episode TNG         1     10 The Ba…        110 1987-1… https:… http:/… &lt;tib…
+## 10 episode TNG         1     11 Hide a…        111 1987-1… https:… http:/… &lt;tib…
+## # … with 15 more rows</code></pre>
+<p>The text here is nested in the <code>text</code> column, and that’s all we need, so I’ll just hold on to that:</p>
+<pre class="r"><code>library(tidyr)
+
+transcripts &lt;- transcripts %&gt;%
+  select(text) %&gt;%
+  unnest(cols = text)
+
+transcripts</code></pre>
+<pre><code>## # A tibble: 11,248 x 6
+##    line_number perspective    setting         description character line        
+##          &lt;int&gt; &lt;chr&gt;          &lt;chr&gt;           &lt;chr&gt;       &lt;chr&gt;     &lt;chr&gt;       
+##  1          NA &lt;NA&gt;           &quot;Fade in&quot;       &lt;NA&gt;        &lt;NA&gt;      &lt;NA&gt;        
+##  2           1 Ext. Space - … &quot;The u.s.s. En… &lt;NA&gt;        Picard V… Captain&#39;s l…
+##  3           2 Other introdu… &quot;On the gigant… &lt;NA&gt;        Picard V… My orders a…
+##  4           3 Int. Engine r… &quot;Huge, with a … Continuing  Picard V… ... I am be…
+##  5           4 Closer on ves… &quot;Showing the d… &lt;NA&gt;        Picard V… I am still …
+##  6          NA Int. Lounge d… &quot;With its huge… &lt;NA&gt;        &lt;NA&gt;      &lt;NA&gt;        
+##  7           5 Continued       &lt;NA&gt;           Continuing  Picard V… ... my crew…
+##  8           6 Int. Bridge -… &quot;Picard, troi,… Continuing  Picard V… ... a first…
+##  9           7 Angle emphasi… &quot;As picard tur… &lt;NA&gt;        Picard    You will ag…
+## 10           8 Angle emphasi…  &lt;NA&gt;           &lt;NA&gt;        Data      Difficult .…
+## # … with 11,238 more rows</code></pre>
+<p>Let’s just focus on the character and line:</p>
+<pre class="r"><code>transcripts &lt;- transcripts %&gt;%
+  select(character, line) %&gt;%
+  filter(!is.na(line))
+
+transcripts</code></pre>
+<pre><code>## # A tibble: 10,448 x 2
+##    character   line                                                             
+##    &lt;chr&gt;       &lt;chr&gt;                                                            
+##  1 Picard V.o. Captain&#39;s log, stardate 42353.7. Our destination is planet Cygnu…
+##  2 Picard V.o. My orders are to examine Farpoint, a starbase built there by the…
+##  3 Picard V.o. ... I am becoming better acquainted with my new command, this Ga…
+##  4 Picard V.o. I am still somewhat in awe of its size and complexity.           
+##  5 Picard V.o. ... my crew we are short in several key positions, most notably …
+##  6 Picard V.o. ... a first officer, but I am informed that a highly experienced…
+##  7 Picard      You will agree, Data, that Starfleet&#39;s instructions are difficul…
+##  8 Data        Difficult ... how so? Simply solve the mystery of Farpoint Stati…
+##  9 Picard      As simple as that.                                               
+## 10 Troi        Farpoint Station. Even the name sounds mysterious.               
+## # … with 10,438 more rows</code></pre>
+<p>We can see already that the characters need some ~data cleaning~ (and thanks to the helpful <a href="https://leonawicz.github.io/rtrek/articles/ex-episode-analysis.html">{rtrek} vignette</a> I knew this would be coming). “Picard V.o.” is a voiceover by Jean-Luc Picard, the Captain of this series’ ship, The Enterprise. It may be a voiceover, but it’s just Picard nonetheless.</p>
+<p>I’ll strip off that excess " V.o." text, and some other variants that I found from peeking at the values of <code>character</code>. Then, we just see “Picard”:</p>
+<pre class="r"><code>library(stringr)
+
+transcripts &lt;- transcripts %&gt;%
+  mutate(character = str_remove_all(character, &quot; \\(V.o.\\)|&#39;s Com Voice| V.o.|  \\(Cont&#39;d\\)| (O.s.)&quot;))
+
+transcripts</code></pre>
+<pre><code>## # A tibble: 10,448 x 2
+##    character line                                                               
+##    &lt;chr&gt;     &lt;chr&gt;                                                              
+##  1 Picard    Captain&#39;s log, stardate 42353.7. Our destination is planet Cygnus …
+##  2 Picard    My orders are to examine Farpoint, a starbase built there by the i…
+##  3 Picard    ... I am becoming better acquainted with my new command, this Gala…
+##  4 Picard    I am still somewhat in awe of its size and complexity.             
+##  5 Picard    ... my crew we are short in several key positions, most notably ...
+##  6 Picard    ... a first officer, but I am informed that a highly experienced m…
+##  7 Picard    You will agree, Data, that Starfleet&#39;s instructions are difficult? 
+##  8 Data      Difficult ... how so? Simply solve the mystery of Farpoint Station.
+##  9 Picard    As simple as that.                                                 
+## 10 Troi      Farpoint Station. Even the name sounds mysterious.                 
+## # … with 10,438 more rows</code></pre>
+<p>My plan is to look at “catchphrases” for each major character in season 1, starting with bigrams - two words appearing together. If you look at the previous sentence, the bigrams are “my plan”, “plan is”, “is to”, “to look”, etc etc.</p>
+<p>From already posting this on twitter and getting roasted for it, I know that two main character’s names will be interpreted as multiple words (because, I guess, they are): La Forge, of Geordi La Forge, and Jean-Luc, of the previously mentioned Picard. “La” is not meaningful without “Forge”, and “Jean” not without “Luc”, so I’m going to cheat a bit here and glue those together for the analysis:</p>
+<pre class="r"><code>transcripts &lt;- transcripts %&gt;%
+  mutate(
+    line = str_replace_all(line, &quot;La Forge&quot;, &quot;LaForge&quot;),
+    line = str_replace_all(line, &quot;Jean-Luc&quot;, &quot;JeanLuc&quot;)
+  )</code></pre>
+<p>Ok ok, I’m getting ahead of myself. Let’s focus on the characters I care about: Picard (the captain), Data (Android :3), Riker (Commander), Beverly (the ship’s doctor), Tasha (head of security - spoiler, but RIP), Geordi (??? he becomes Chief Engineer in season 1 but I forget his job before), Troi (the ship’s counselor), Worf (a Klingon commander?), and Wesley (a literal child but ok). No offense to everyone else, no offense to Q. Nine characters fit on a single plot really well!</p>
+<pre class="r"><code>transcripts &lt;- transcripts %&gt;%
+  filter(character %in% c(
+    &quot;Picard&quot;, &quot;Data&quot;, &quot;Riker&quot;, &quot;Beverly&quot;,
+    &quot;Tasha&quot;, &quot;Geordi&quot;, &quot;Troi&quot;, &quot;Worf&quot;, &quot;Wesley&quot;
+  ))</code></pre>
+<p>Now, I’ll split every line into bigrams and count how many times the bigrams appear, by character:</p>
+<pre class="r"><code>library(tidytext)
+
+bigrams &lt;- transcripts %&gt;%
+  unnest_tokens(output = bigram, input = line, token = &quot;ngrams&quot;, n = 2) %&gt;%
+  filter(!is.na(bigram)) %&gt;%
+  count(character, bigram, sort = TRUE)
+
+bigrams</code></pre>
+<pre><code>## # A tibble: 50,958 x 3
+##    character bigram            n
+##    &lt;chr&gt;     &lt;chr&gt;         &lt;int&gt;
+##  1 Picard    number one      138
+##  2 Picard    this is          94
+##  3 Picard    of the           86
+##  4 Data      it is            67
+##  5 Picard    to the           66
+##  6 Picard    we are           56
+##  7 Picard    in the           54
+##  8 Picard    captain&#39;s log    53
+##  9 Picard    on the           52
+## 10 Picard    do you           49
+## # … with 50,948 more rows</code></pre>
+<p>Amazingly enough, the top bigram is actually meaningful - “number one”, by Picard, refers to the ship’s commander, William Riker. But most of the rest of the top 10 bigrams are pretty boring - “this is”, “of the”, “it is”, “to the”. Some of these bigrams consist of two stopwords together.</p>
+<p>Stopwords do not add much meaning to a sentence, and we can usually safely remove them. Since we have bigrams, two words together, here, it’s not a matter of just anti-joining on a stopwords data set. Instead, I’ll take the approach of removing a bigram if <em>both</em> of the words are stopwords.</p>
+<p>From the {tidytext} package, I’m using the “snowball” stopword lexicon - this will allow for more conservative stopword removal, since it contains way less words than the other two lexicons:</p>
+<pre class="r"><code>stop_words %&gt;%
+  count(lexicon)</code></pre>
+<pre><code>## # A tibble: 3 x 2
+##   lexicon      n
+##   &lt;chr&gt;    &lt;int&gt;
+## 1 onix       404
+## 2 SMART      571
+## 3 snowball   174</code></pre>
+<pre class="r"><code>tng_stopwords &lt;- stop_words %&gt;%
+  filter(lexicon == &quot;snowball&quot;) %&gt;%
+  pull(word)</code></pre>
+<p>To see if <em>both</em> words in a bigram are stopwords, I’ll split the bigram into two columns, and test if each is a stopword (yes I know how to use <code>across()</code> wowww):</p>
+<pre class="r"><code>bigrams &lt;- bigrams %&gt;%
+  separate(bigram, into = c(&quot;word1&quot;, &quot;word2&quot;), sep = &quot; &quot;) %&gt;%
+  mutate(across(c(word1, word2), .fns = list(is_stopword = ~ .x %in% tng_stopwords)))
+
+bigrams</code></pre>
+<pre><code>## # A tibble: 50,958 x 6
+##    character word1     word2     n word1_is_stopword word2_is_stopword
+##    &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt; &lt;int&gt; &lt;lgl&gt;             &lt;lgl&gt;            
+##  1 Picard    number    one     138 FALSE             FALSE            
+##  2 Picard    this      is       94 TRUE              TRUE             
+##  3 Picard    of        the      86 TRUE              TRUE             
+##  4 Data      it        is       67 TRUE              TRUE             
+##  5 Picard    to        the      66 TRUE              TRUE             
+##  6 Picard    we        are      56 TRUE              TRUE             
+##  7 Picard    in        the      54 TRUE              TRUE             
+##  8 Picard    captain&#39;s log      53 FALSE             FALSE            
+##  9 Picard    on        the      52 TRUE              TRUE             
+## 10 Picard    do        you      49 TRUE              TRUE             
+## # … with 50,948 more rows</code></pre>
+<p>Filter only for cases where they’re not <em>both</em> stopwords (but one may be, e.g. “the” below):</p>
+<pre class="r"><code>bigrams &lt;- bigrams %&gt;%
+  filter(!(word1_is_stopword &amp; word2_is_stopword))
+
+head(bigrams)</code></pre>
+<pre><code>## # A tibble: 6 x 6
+##   character word1     word2          n word1_is_stopword word2_is_stopword
+##   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;int&gt; &lt;lgl&gt;             &lt;lgl&gt;            
+## 1 Picard    number    one          138 FALSE             FALSE            
+## 2 Picard    captain&#39;s log           53 FALSE             FALSE            
+## 3 Picard    mister    data          38 FALSE             FALSE            
+## 4 Picard    the       enterprise    38 TRUE              FALSE            
+## 5 Picard    the       bridge        37 TRUE              FALSE            
+## 6 Picard    log       stardate      32 FALSE             FALSE</code></pre>
+<p>Then reunite the <code>word</code> columns into a happy bigram again:</p>
+<pre class="r"><code>bigrams &lt;- bigrams %&gt;%
+  unite(bigram, c(word1, word2), sep = &quot; &quot;) %&gt;%
+  select(-contains(&quot;is_stopword&quot;))
+
+bigrams</code></pre>
+<pre><code>## # A tibble: 43,904 x 3
+##    character bigram             n
+##    &lt;chr&gt;     &lt;chr&gt;          &lt;int&gt;
+##  1 Picard    number one       138
+##  2 Picard    captain&#39;s log     53
+##  3 Picard    mister data       38
+##  4 Picard    the enterprise    38
+##  5 Picard    the bridge        37
+##  6 Picard    log stardate      32
+##  7 Geordi    aye sir           30
+##  8 Picard    away team         30
+##  9 Picard    can you           30
+## 10 Picard    lieutenant yar    29
+## # … with 43,894 more rows</code></pre>
+<p>We could just look at each character’s top bigrams, but I want to see what makes them <em>them</em>; what makes them unique - what if all of the characters have the same top bigrams? Boring!</p>
+<p>Because I’m only human, I’ll go ahead and just copy Julia Silge’s excellent <a href="https://juliasilge.com/blog/introducing-tidylo/">blog post on {tidylo}</a> and use weighted log odds, a method of comparing features (bigrams) across some set (characters).</p>
+<p>Since this is ~tidy text mining~, it’s super easy to get the top 5 bigrams for each character, by the weighted log odds (no I don’t know what it is but it compares them, OK? I’ll remove the x-axis labels anyways)</p>
+<pre class="r"><code>library(tidylo)
+
+tng_tidylo &lt;- bigrams %&gt;%
+  bind_log_odds(character, bigram, n) %&gt;%
+  group_by(character) %&gt;%
+  top_n(5, log_odds_weighted) %&gt;%
+  ungroup()
+
+tng_tidylo</code></pre>
+<pre><code>## # A tibble: 46 x 4
+##    character bigram               n log_odds_weighted
+##    &lt;chr&gt;     &lt;chr&gt;            &lt;int&gt;             &lt;dbl&gt;
+##  1 Picard    number one         138              4.89
+##  2 Picard    captain&#39;s log       53              6.91
+##  3 Picard    log stardate        32              5.18
+##  4 Geordi    aye sir             30              8.13
+##  5 Picard    mister laforge      22              4.20
+##  6 Data      i believe           18              3.87
+##  7 Wesley    yes sir             17              7.56
+##  8 Tasha     frequencies open    14              6.74
+##  9 Riker     riker to            13              6.54
+## 10 Tasha     open sir            12              6.23
+## # … with 36 more rows</code></pre>
+<p>Very good!</p>
+<p>In order to visualize, I want to clean up a bit more. Let’s give everyone the dignity of their full names, and reorder them according to… rank? I don’t know.</p>
+<p>AND, before I forget… “laforge” -&gt; “la forge” and “jeanluc” -&gt; “jeanluc”, at least.</p>
+<pre class="r"><code>library(forcats)
+
+tng_tidylo &lt;- tng_tidylo %&gt;%
+  mutate(
+    character = recode(character,
+      &quot;Picard&quot; = &quot;Jean-Luc Picard&quot;,
+      &quot;Riker&quot; = &quot;William Riker&quot;,
+      &quot;Troi&quot; = &quot;Deanna Troi&quot;,
+      &quot;Tasha&quot; = &quot;Tasha Yar&quot;,
+      &quot;Geordi&quot; = &quot;Geordi La Forge&quot;,
+      &quot;Beverly&quot; = &quot;Dr. Beverly Crusher&quot;,
+      &quot;Wesley&quot; = &quot;Wesley Crusher&quot;
+    ),
+    character = fct_relevel(
+      character, &quot;Jean-Luc Picard&quot;, &quot;William Riker&quot;, &quot;Data&quot;, &quot;Deanna Troi&quot;,
+      &quot;Tasha Yar&quot;, &quot;Worf&quot;, &quot;Geordi La Forge&quot;, &quot;Dr. Beverly Crusher&quot;, &quot;Wesley Crusher&quot;
+    ),
+    bigram = str_replace_all(bigram, &quot;laforge&quot;, &quot;la forge&quot;),
+    bigram = str_replace_all(bigram, &quot;jeanluc&quot;, &quot;jean luc&quot;)
+  )</code></pre>
+<p>Now, finally, we can visualize. Of course, there’s R packages for making visualizations look Star Trek-y. In particular, I’m using <a href="https://leonawicz.github.io/trekcolors/index.html">{trekcolors}</a> and <a href="https://leonawicz.github.io/trekfont/">{trekfont}</a> to supply the… colours and font. By the way, all of these Star Trek packages were created by <a href="https://twitter.com/NeverBruncher">Matt Leonawicz</a>. Thank you for the packages!</p>
+<pre class="r"><code>library(ggplot2)
+library(trekcolors)
+library(trekfont)
+
+tng_tidylo %&gt;%
+  ggplot(aes(
+    x = log_odds_weighted,
+    y = reorder_within(bigram, log_odds_weighted, character),
+    fill = character
+  )) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(vars(character), scales = &quot;free_y&quot;) +
+  labs(
+    x = NULL, y = NULL,
+    title = &quot;Start Trek: The Next Generation catchphrases&quot;,
+    subtitle = &quot;(Season 1 bigrams compared via tidy log odds)&quot;,
+    caption = &quot;Data: {rtrek} package&quot;
+  ) +
+  scale_y_reordered() +
+  scale_fill_trek(&quot;starfleet&quot;) +
+  theme_dark(base_family = &quot;Khan&quot;) +
+  theme(
+    plot.title.position = &quot;plot&quot;,
+    axis.ticks.length = unit(0, &quot;pt&quot;),
+    axis.text.x = element_blank(),
+    plot.background = element_rect(fill = &quot;black&quot;, colour = &quot;black&quot;),
+    plot.title = element_text(colour = &quot;#327CCB&quot;, family = &quot;StarNext&quot;, hjust = 0.5, size = 20),
+    plot.subtitle = element_text(colour = &quot;white&quot;, hjust = 0.5),
+    plot.caption = element_text(colour = &quot;white&quot;),
+    axis.text = element_text(colour = &quot;white&quot;, family = &quot;Federation&quot;)
+  )</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/plot-1.png" width="3000" /></p>
+<p>I absolutely love how much the different character’s personalities (and yes, catchphrases!) shine through, even in such a simple analysis like this. Jean-Luc Picard starts every episode in season 1 with the Captain’s log, and often calls Riker “Number one”. Data is an Android who cannot use compound words, and is a wealth of, well, data - “most interesting” and “it appears” make total sense. Deanna Troi, the counselor, focuses on understanding people and other life forms’ feelings - “I sense” and “I believe” are so appropriate. And it goes on!</p>
+<p>Of course, as folks on twitter quickly realized (and I knew too, okay!), some of these are in fact trigrams (three words together), not bigrams. Captain Picard starts every episode with “Captain’s log, stardate…” and then the date. So it’s of no surprise that “Captain’s log” and “log stardate” would both appear. Would it be more accurate to look at trigrams? …quadgrams? What else are we missing? OH WELL.</p>
+<p>If anyone knows of some way to look at multiple n-grams (e.g. bigrams, trigrams, …quadgrams?) all together, and exclude any overlap (like, keeping “captain’s log stardate” but not “captain’s log”), <a href="https://www.yearoftrek.com/2019/03/the-battle.html">I’m all ears</a>. I did try some stuff out but it felt too much like sketchy science to include here!</p>
+<p>I could go on and on (maybe I have already) but I’d rather go watch more Star Trek. Bye!</p>

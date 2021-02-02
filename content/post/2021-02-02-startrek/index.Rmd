@@ -1,0 +1,255 @@
+---
+title: "Star Trek: The Next Generation catchphrases"
+author: Sharla Gelfand
+date: '2021-02-02'
+slug: []
+categories: []
+tags: []
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-02-01T20:58:39-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+
+It was only a matter of time before I reached ["The Sopranos Point"](https://twitter.com/kearneymw/status/1354640480127111174) of the pandemic and decided to pick up Star Trek. I thought I might not ~get it~ but turns out that it's just a soap opera for nerds (`r emo::ji("raising_hand")`)... so it was also only a matter of time before I decided to analyze data from it. I posted [a plot on twitter](https://twitter.com/sharlagelfand/status/1354881416480358409) (only click if you want spoilers!), but left the code a mystery (ok no one asked for it). Here it is now!
+
+At the time I embarked on this little project, we had just wrapped up season 1 of Star Trek: The Next Generation. Now we're on season 3, but..... let's just look at Season 1 here.
+
+The way that the characters speak is so wonderful and distinct, and I wanted to see if text analysis could capture that. Luckily, I didn't have to work very hard, neither to get the data nor to analyze it, thanks to wonderful packages like [{rtrek}](https://leonawicz.github.io/rtrek/index.html), which contains datasets related to Star Trek - including transcripts! And, of course, where would I be without [{tidytext}](https://juliasilge.github.io/tidytext/) for text analysis?
+
+First, I'll grab the TNG transcripts via {rtrek} and filter only for the first season:
+
+```{r data}
+library(rtrek)
+library(dplyr)
+
+transcripts <- st_transcripts() %>%
+  filter(series == "TNG", season == 1)
+
+transcripts
+```
+
+The text here is nested in the `text` column, and that's all we need, so I'll just hold on to that:
+
+```{r}
+library(tidyr)
+
+transcripts <- transcripts %>%
+  select(text) %>%
+  unnest(cols = text)
+
+transcripts
+```
+
+Let's just focus on the character and line:
+
+```{r}
+transcripts <- transcripts %>%
+  select(character, line) %>%
+  filter(!is.na(line))
+
+transcripts
+```
+
+We can see already that the characters need some ~data cleaning~ (and thanks to the helpful [{rtrek} vignette](https://leonawicz.github.io/rtrek/articles/ex-episode-analysis.html) I knew this would be coming). "Picard V.o." is a voiceover by Jean-Luc Picard, the Captain of this series' ship, The Enterprise. It may be a voiceover, but it's just Picard nonetheless. 
+
+I'll strip off that excess " V.o." text, and some other variants that I found from peeking at the values of `character`. Then, we just see "Picard":
+
+```{r}
+library(stringr)
+
+transcripts <- transcripts %>%
+  mutate(character = str_remove_all(character, " \\(V.o.\\)|'s Com Voice| V.o.|  \\(Cont'd\\)| (O.s.)"))
+
+transcripts
+```
+
+My plan is to look at "catchphrases" for each major character in season 1, starting with bigrams - two words appearing together. If you look at the previous sentence, the bigrams are "my plan", "plan is", "is to", "to look", etc etc. 
+
+From already posting this on twitter and getting roasted for it, I know that two main character's names will be interpreted as multiple words (because, I guess, they are): La Forge, of Geordi La Forge, and Jean-Luc, of the previously mentioned Picard. "La" is not meaningful without "Forge", and "Jean" not without "Luc", so I'm going to cheat a bit here and glue those together for the analysis:
+
+```{r}
+transcripts <- transcripts %>%
+  mutate(
+    line = str_replace_all(line, "La Forge", "LaForge"),
+    line = str_replace_all(line, "Jean-Luc", "JeanLuc")
+  )
+```
+
+Ok ok, I'm getting ahead of myself. Let's focus on the characters I care about: Picard (the captain), Data (Android :3), Riker (Commander), Beverly (the ship's doctor), Tasha (head of security - spoiler, but RIP), Geordi (??? he becomes Chief Engineer in season 1 but I forget his job before), Troi (the ship's counselor), Worf (a Klingon commander?), and Wesley (a literal child but ok). No offense to everyone else, no offense to Q. Nine characters fit on a single plot really well!
+
+```{r}
+transcripts <- transcripts %>%
+  filter(character %in% c(
+    "Picard", "Data", "Riker", "Beverly",
+    "Tasha", "Geordi", "Troi", "Worf", "Wesley"
+  ))
+```
+
+Now, I'll split every line into bigrams and count how many times the bigrams appear, by character:
+
+```{r}
+library(tidytext)
+
+bigrams <- transcripts %>%
+  unnest_tokens(output = bigram, input = line, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) %>%
+  count(character, bigram, sort = TRUE)
+
+bigrams
+```
+
+Amazingly enough, the top bigram is actually meaningful - "number one", by Picard, refers to the ship's commander, William Riker. But most of the rest of the top 10 bigrams are pretty boring - "this is", "of the", "it is", "to the". Some of these bigrams consist of two stopwords together. 
+
+Stopwords do not add much meaning to a sentence, and we can usually safely remove them. Since we have bigrams, two words together, here, it's not a matter of just anti-joining on a stopwords data set. Instead, I'll take the approach of removing a bigram if *both* of the words are stopwords.
+
+From the {tidytext} package, I'm using the "snowball" stopword lexicon - this will allow for more conservative stopword removal, since it contains way less words than the other two lexicons:
+
+```{r}
+stop_words %>%
+  count(lexicon)
+
+tng_stopwords <- stop_words %>%
+  filter(lexicon == "snowball") %>%
+  pull(word)
+```
+
+To see if *both* words in a bigram are stopwords, I'll split the bigram into two columns, and test if each is a stopword (yes I know how to use `across()` wowww):
+
+```{r}
+bigrams <- bigrams %>%
+  separate(bigram, into = c("word1", "word2"), sep = " ") %>%
+  mutate(across(c(word1, word2), .fns = list(is_stopword = ~ .x %in% tng_stopwords)))
+
+bigrams
+```
+
+Filter only for cases where they're not *both* stopwords (but one may be, e.g. "the" below):
+
+```{r}
+bigrams <- bigrams %>%
+  filter(!(word1_is_stopword & word2_is_stopword))
+
+head(bigrams)
+```
+
+Then reunite the `word` columns into a happy bigram again:
+
+```{r}
+bigrams <- bigrams %>%
+  unite(bigram, c(word1, word2), sep = " ") %>%
+  select(-contains("is_stopword"))
+
+bigrams
+```
+
+We could just look at each character's top bigrams, but I want to see what makes them *them*; what makes them unique - what if all of the characters have the same top bigrams? Boring!
+
+Because I'm only human, I'll go ahead and just copy Julia Silge's excellent [blog post on {tidylo}](https://juliasilge.com/blog/introducing-tidylo/) and use weighted log odds, a method of comparing features (bigrams) across some set (characters).
+
+Since this is ~tidy text mining~, it's super easy to get the top 5 bigrams for each character, by the weighted log odds (no I don't know what it is but it compares them, OK? I'll remove the x-axis labels anyways)
+
+```{r}
+library(tidylo)
+
+tng_tidylo <- bigrams %>%
+  bind_log_odds(character, bigram, n) %>%
+  group_by(character) %>%
+  top_n(5, log_odds_weighted) %>%
+  ungroup()
+
+tng_tidylo
+```
+
+Very good! 
+
+In order to visualize, I want to clean up a bit more. Let's give everyone the dignity of their full names, and reorder them according to... rank? I don't know.
+
+AND, before I forget... "laforge" -> "la forge" and "jeanluc" -> "jeanluc", at least.
+
+```{r}
+library(forcats)
+
+tng_tidylo <- tng_tidylo %>%
+  mutate(
+    character = recode(character,
+      "Picard" = "Jean-Luc Picard",
+      "Riker" = "William Riker",
+      "Troi" = "Deanna Troi",
+      "Tasha" = "Tasha Yar",
+      "Geordi" = "Geordi La Forge",
+      "Beverly" = "Dr. Beverly Crusher",
+      "Wesley" = "Wesley Crusher"
+    ),
+    character = fct_relevel(
+      character, "Jean-Luc Picard", "William Riker", "Data", "Deanna Troi",
+      "Tasha Yar", "Worf", "Geordi La Forge", "Dr. Beverly Crusher", "Wesley Crusher"
+    ),
+    bigram = str_replace_all(bigram, "laforge", "la forge"),
+    bigram = str_replace_all(bigram, "jeanluc", "jean luc")
+  )
+```
+
+Now, finally, we can visualize. Of course, there's R packages for making visualizations look Star Trek-y. In particular, I'm using [{trekcolors}](https://leonawicz.github.io/trekcolors/index.html) and [{trekfont}](https://leonawicz.github.io/trekfont/) to supply the... colours and font. By the way, all of these Star Trek packages were created by [Matt Leonawicz](https://twitter.com/NeverBruncher). Thank you for the packages!
+
+```{r, include = FALSE}
+library(showtext)
+font <- c("Khan", "StarNext", "Federation")
+path <- system.file(paste0("fonts/", font, ".ttf"), package = "trekfont")
+for (i in seq_along(font)) font_add(font[i], path[i])
+font_families()
+showtext_auto()
+```
+
+```{r plot, fig.width = 10, fig.height = 6, dpi = 300}
+library(ggplot2)
+library(trekcolors)
+library(trekfont)
+
+tng_tidylo %>%
+  ggplot(aes(
+    x = log_odds_weighted,
+    y = reorder_within(bigram, log_odds_weighted, character),
+    fill = character
+  )) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(vars(character), scales = "free_y") +
+  labs(
+    x = NULL, y = NULL,
+    title = "Start Trek: The Next Generation catchphrases",
+    subtitle = "(Season 1 bigrams compared via tidy log odds)",
+    caption = "Data: {rtrek} package"
+  ) +
+  scale_y_reordered() +
+  scale_fill_trek("starfleet") +
+  theme_dark(base_family = "Khan") +
+  theme(
+    plot.title.position = "plot",
+    axis.ticks.length = unit(0, "pt"),
+    axis.text.x = element_blank(),
+    plot.background = element_rect(fill = "black", colour = "black"),
+    plot.title = element_text(colour = "#327CCB", family = "StarNext", hjust = 0.5, size = 20),
+    plot.subtitle = element_text(colour = "white", hjust = 0.5),
+    plot.caption = element_text(colour = "white"),
+    axis.text = element_text(colour = "white", family = "Federation")
+  )
+```
+
+I absolutely love how much the different character's personalities (and yes, catchphrases!) shine through, even in such a simple analysis like this. Jean-Luc Picard starts every episode in season 1 with the Captain's log, and often calls Riker "Number one". Data is an Android who cannot use compound words, and is a wealth of, well, data - "most interesting" and "it appears" make total sense. Deanna Troi, the counselor, focuses on understanding people and other life forms' feelings - "I sense" and "I believe" are so appropriate. And it goes on!
+
+Of course, as folks on twitter quickly realized (and I knew too, okay!), some of these are in fact trigrams (three words together), not bigrams. Captain Picard starts every episode with "Captain's log, stardate..." and then the date. So it's of no surprise that "Captain's log" and "log stardate" would both appear. Would it be more accurate to look at trigrams? ...quadgrams? What else are we missing? OH WELL.
+
+If anyone knows of some way to look at multiple n-grams (e.g. bigrams, trigrams, ...quadgrams?) all together, and exclude any overlap (like, keeping "captain's log stardate" but not "captain's log"), [I'm all ears](https://www.yearoftrek.com/2019/03/the-battle.html). I did try some stuff out but it felt too much like sketchy science to include here!
+
+I could go on and on (maybe I have already) but I'd rather go watch more Star Trek. Bye!
